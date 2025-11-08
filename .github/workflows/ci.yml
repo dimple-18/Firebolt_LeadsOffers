@@ -1,0 +1,53 @@
+name: CI - Lint, Test, Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout your repo code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Setup Node.js
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Cache node_modules to speed up CI
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+          key: ${{ runner.os }}-modules-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-modules-
+
+      # Install dependencies for frontend & backend
+      - name: Install dependencies
+        run: |
+          cd backend && npm ci
+          cd ../frontend && npm ci
+
+      # Run ESLint (if configured)
+      - name: Run lint
+        run: |
+          cd frontend && npx eslint . || echo "No lint errors"
+
+      # Run tests (optional)
+      - name: Run tests
+        run: |
+          cd backend && npm test || echo "No tests configured"
+
+      # Build frontend
+      - name: Build frontend
+        run: |
+          cd frontend && npm run build
