@@ -1,0 +1,16 @@
+# Node and build folders
+node_modules/
+dist/
+build/
+
+# Environment files
+.env
+backend/.env
+
+# Firebase private key
+backend/config/serviceAccountKey.json
+
+# OS and editor files
+.vscode/
+.DS_Store
+Thumbs.db
