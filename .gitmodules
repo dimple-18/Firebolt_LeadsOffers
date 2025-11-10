@@ -1,0 +1,3 @@
+[submodule "marketing-site"]
+	path = marketing-site
+	url = https://github.com/dimple-18/firebolt-marketing.git
