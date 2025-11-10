@@ -11,43 +11,50 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout your repo code
-      - name: Checkout repository
+      - name: Checkout repository (with submodules)
         uses: actions/checkout@v4
+        with:
+          submodules: true            # <-- important
+          fetch-depth: 0              # good practice for submodules
 
-      # Setup Node.js
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
-      # Cache node_modules to speed up CI
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            **/node_modules
-          key: ${{ runner.os }}-modules-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-modules-
+      # Install deps
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci
 
-      # Install dependencies for frontend & backend
-      - name: Install dependencies
-        run: |
-          cd backend && npm ci
-          cd ../frontend && npm ci
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
 
-      # Run ESLint (if configured)
-      - name: Run lint
-        run: |
-          cd frontend && npx eslint . || echo "No lint errors"
+      - name: Install marketing-site deps
+        working-directory: marketing-site
+        run: npm ci
 
-      # Run tests (optional)
-      - name: Run tests
-        run: |
-          cd backend && npm test || echo "No tests configured"
+      # Lint (optional)
+      - name: Lint frontend
+        working-directory: frontend
+        run: npx eslint . || echo "No lint errors or eslint not configured"
 
-      # Build frontend
+      - name: Lint marketing-site
+        working-directory: marketing-site
+        run: npx eslint . || echo "No lint errors or eslint not configured"
+
+      # Tests (optional)
+      - name: Test backend
+        working-directory: backend
+        run: npm test || echo "No tests configured"
+
+      # Build apps
       - name: Build frontend
-        run: |
-          cd frontend && npm run build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Build marketing-site
+        working-directory: marketing-site
+        run: npm run build
