@@ -1,14 +1,25 @@
-function App() {
+import { Routes, Route } from "react-router-dom";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
+import Reset from "@/pages/Reset";
+import ProtectedRoute from "@/routes/ProtectedRoute";
+
+function Dashboard() {
   return (
-    <div className="text-center mt-20">
-      <h1 className="text-4xl font-bold text-blue-600">
-        Firebolt Leads & Offers Portal
-      </h1>
-      <p className="mt-4 text-gray-700">
-        Frontend is working perfectly with Vite + Tailwind ✨
-      </p>
+    <div className="min-h-screen grid place-items-center">
+      <h1 className="text-3xl font-bold">Dashboard (Protected)</h1>
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/reset" element={<Reset />} />
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+    </Routes>
+  );
+}
