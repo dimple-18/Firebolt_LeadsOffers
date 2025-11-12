@@ -1,26 +1,57 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 
-const schema = z.object({ email: z.string().email(), password: z.string().min(6) });
+const schema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
 
 export default function Login() {
-  const { login, loginWithGoogle } = useAuth();
+  const { user, login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
-  const { register, handleSubmit, formState: { errors, isSubmitting } } =
-    useForm({ resolver: zodResolver(schema) });
+  const [err, setErr] = useState("");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({ resolver: zodResolver(schema) });
+
+  // If already logged in, go to dashboard
+  useEffect(() => {
+    if (user) navigate("/dashboard", { replace: true });
+  }, [user, navigate]);
 
   const onSubmit = async (data) => {
-    await login(data.email, data.password);
-    navigate("/dashboard");
+    setErr("");
+    try {
+      await login(data.email, data.password);
+      navigate("/dashboard", { replace: true });
+    } catch (e) {
+      console.error(e);
+      // Friendly messages
+      const code = e?.code || "";
+      if (code.includes("auth/invalid-credential") || code.includes("auth/wrong-password")) {
+        setErr("Invalid email or password.");
+      } else if (code.includes("auth/user-not-found")) {
+        setErr("No account found. Please create one.");
+      } else if (code.includes("auth/too-many-requests")) {
+        setErr("Too many attempts. Try again later.");
+      } else {
+        setErr("Could not sign in. Please try again.");
+      }
+    }
   };
 
   return (
     <div className="min-h-screen grid place-items-center bg-gradient-to-br from-orange-50 to-white">
       <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-md bg-white p-6 rounded-2xl shadow">
         <h1 className="text-2xl font-bold mb-4">Welcome back</h1>
+
+        {err && <div className="mb-3 rounded bg-red-50 text-red-700 px-3 py-2 text-sm">{err}</div>}
 
         <label className="block mb-2">
           <span className="text-sm">Email</span>

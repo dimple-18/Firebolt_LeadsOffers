@@ -19,7 +19,10 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/reset" element={<Reset />} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+           <Dashboard />
+        </ProtectedRoute>} />
     </Routes>
   );
 }
