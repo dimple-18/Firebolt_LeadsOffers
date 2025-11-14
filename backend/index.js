@@ -39,7 +39,9 @@ let cloudinary = null;
 try {
   cloudinary = require("cloudinary").v2;
   cloudinary.config({ secure: true }); // will read CLOUDINARY_URL if present
-} catch { /* cloudinary is optional */ }
+} catch {
+  /* cloudinary is optional */
+}
 
 // ----------------- App + middleware
 const app = express();
@@ -49,13 +51,18 @@ app.use(express.json());
 // Multer: save temp files to ./uploads (easier to send to Cloudinary)
 const upload = multer({ dest: path.join(__dirname, "uploads") });
 
-// ----------------- Public health route
+// ----------------- Public routes
 app.get("/health", (_req, res) => {
   res.json({ ok: true, message: "API is up" });
 });
 
 app.get("/", (_req, res) => {
   res.json({ ok: true, message: "home page" });
+});
+
+// Silences Chrome/DevTools probe (returns 204 No Content)
+app.get("/.well-known/appspecific/com.chrome.devtools.json", (_req, res) => {
+  res.status(204).end();
 });
 
 // ----------------- Auth middleware (verify Firebase ID token)
@@ -148,13 +155,93 @@ app.post(
   }
 );
 
+// ----------------- Offers API (protected)
+
+// GET /offers  → list offers for logged-in user
+app.get("/offers", verifyFirebaseToken, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+
+    const snap = await db
+      .collection("offers")
+      .where("userId", "==", uid)
+      .orderBy("createdAt", "desc")
+      .get();
+
+    const offers = snap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    res.json({ ok: true, offers });
+  } catch (err) {
+    console.error("GET /offers error:", err);
+    res.status(500).json({ ok: false, error: "Failed to load offers" });
+  }
+});
+
+// POST /offers/:id/accept  → mark offer as accepted
+app.post("/offers/:id/accept", verifyFirebaseToken, async (req, res) => {
+  try {
+    const offerId = req.params.id;
+    const uid = req.user.uid;
+
+    const ref = db.collection("offers").doc(offerId);
+    const snap = await ref.get();
+
+    if (!snap.exists) {
+      return res.status(404).json({ ok: false, error: "Offer not found" });
+    }
+
+    const data = snap.data();
+    if (data.userId !== uid) {
+      return res.status(403).json({ ok: false, error: "Not your offer" });
+    }
+
+    await ref.update({
+      status: "accepted",
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    res.json({ ok: true, id: offerId, status: "accepted" });
+  } catch (err) {
+    console.error("POST /offers/:id/accept error:", err);
+    res.status(500).json({ ok: false, error: "Failed to accept offer" });
+  }
+});
+
+// POST /offers/:id/decline  → mark offer as declined
+app.post("/offers/:id/decline", verifyFirebaseToken, async (req, res) => {
+  try {
+    const offerId = req.params.id;
+    const uid = req.user.uid;
+
+    const ref = db.collection("offers").doc(offerId);
+    const snap = await ref.get();
+
+    if (!snap.exists) {
+      return res.status(404).json({ ok: false, error: "Offer not found" });
+    }
+
+    const data = snap.data();
+    if (data.userId !== uid) {
+      return res.status(403).json({ ok: false, error: "Not your offer" });
+    }
+
+    await ref.update({
+      status: "declined",
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    res.json({ ok: true, id: offerId, status: "declined" });
+  } catch (err) {
+    console.error("POST /offers/:id/decline error:", err);
+    res.status(500).json({ ok: false, error: "Failed to decline offer" });
+  }
+});
 
 // ----------------- Start server
 const PORT = process.env.PORT || 3001;
-// Silences Chrome/DevTools probe (returns 204 No Content)
-app.get("/.well-known/appspecific/com.chrome.devtools.json", (_req, res) => {
-  res.status(204).end();
-});
 
 app.listen(PORT, () =>
   console.log(`✅ Backend running on http://localhost:${PORT}`)

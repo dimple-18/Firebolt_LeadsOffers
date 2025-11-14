@@ -16,10 +16,21 @@ export default function Register() {
   const { register, handleSubmit, formState: { errors, isSubmitting } } =
     useForm({ resolver: zodResolver(schema) });
 
-  const onSubmit = async (data) => {
+  // const onSubmit = async (data) => {
+  //   await signup(data.email, data.password, data.name);
+  //   navigate("/dashboard");
+  // };
+
+const onSubmit = async (data) => {
+  try {
     await signup(data.email, data.password, data.name);
     navigate("/dashboard");
-  };
+  } catch (err) {
+    console.error(err);
+    alert(err.message || "Failed to create account. Please try again.");
+  }
+};
+
 
   return (
     <div className="min-h-screen grid place-items-center bg-gradient-to-br from-orange-50 to-white">
