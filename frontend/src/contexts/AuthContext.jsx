@@ -18,29 +18,31 @@ export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(
-    () =>
-      onAuthStateChanged(auth, (u) => {
-        setUser(u || null);
-        setLoading(false);
-      }),
-    []
-  );
+  // Listen to auth state
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u || null);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
 
+  // LOGIN
   const login = (email, password) =>
     signInWithEmailAndPassword(auth, email, password);
 
-  // 🔥 UPDATED: register also creates Firestore user document
+  // REGISTER + SAVE PROFILE TO FIRESTORE
   const register = async (email, password, displayName) => {
+    // 1) Create the user
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     const user = cred.user;
 
-    // Set Firebase Auth displayName
+    // 2) Update the displayName in Firebase Auth
     if (displayName) {
       await updateProfile(user, { displayName });
     }
 
-    // Create/overwrite Firestore profile document
+    // 3) Create profile document in Firestore
     await setDoc(doc(db, "users", user.uid), {
       email,
       displayName: displayName || "",
@@ -50,8 +52,13 @@ export default function AuthProvider({ children }) {
     return cred;
   };
 
+  // PASSWORD RESET
   const resetPassword = (email) => sendPasswordResetEmail(auth, email);
+
+  // GOOGLE LOGIN
   const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
+
+  // LOGOUT
   const logout = () => signOut(auth);
 
   return (
@@ -66,7 +73,7 @@ export default function AuthProvider({ children }) {
         logout,
       }}
     >
-      {children}
+      {!loading && children}
     </AuthCtx.Provider>
   );
 }
