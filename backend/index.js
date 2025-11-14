@@ -1,58 +1,161 @@
+// backend/index.js
+// ----------------- Core setup
+require("dotenv").config(); // loads .env if present
+
 const express = require("express");
 const cors = require("cors");
-const multer = require("multer");                 // ← add
-const cloudinary = require("cloudinary").v2;      // ← add
-require("dotenv").config();                       // ← add
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
 
+// ----------------- Firebase Admin (server-side)
+const admin = require("firebase-admin");
+
+// Service account JSON (keep this file gitignored!)
+let serviceAccount;
+try {
+  serviceAccount = require("./config/serviceAccountKey.json");
+} catch {
+  // You can also set GOOGLE_APPLICATION_CREDENTIALS env instead of the file.
+  console.warn(
+    "⚠️ serviceAccountKey.json not found. Make sure GOOGLE_APPLICATION_CREDENTIALS is set, or add backend/config/serviceAccountKey.json"
+  );
+}
+
+if (!admin.apps.length) {
+  admin.initializeApp(
+    serviceAccount
+      ? { credential: admin.credential.cert(serviceAccount) }
+      : { credential: admin.credential.applicationDefault() }
+  );
+}
+
+const db = admin.firestore(); // (optional) if you’ll save docs later
+
+// ----------------- Optional Cloudinary
+// If CLOUDINARY_URL is set in .env, this will be used automatically.
+// Example: CLOUDINARY_URL=cloudinary://<api_key>:<api_secret>@<cloud_name>
+let cloudinary = null;
+try {
+  cloudinary = require("cloudinary").v2;
+  cloudinary.config({ secure: true }); // will read CLOUDINARY_URL if present
+} catch { /* cloudinary is optional */ }
+
+// ----------------- App + middleware
 const app = express();
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
-// Cloudinary config
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key:    process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+// Multer: save temp files to ./uploads (easier to send to Cloudinary)
+const upload = multer({ dest: path.join(__dirname, "uploads") });
+
+// ----------------- Public health route
+app.get("/health", (_req, res) => {
+  res.json({ ok: true, message: "API is up" });
 });
 
-// Multer (in-memory)
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+app.get("/", (_req, res) => {
+  res.json({ ok: true, message: "home page" });
 });
 
-app.get("/health", (_, res) => res.json({ ok: true, message: "API is up" }));
-
-// NEW: Upload route
-app.post("/upload", upload.single("file"), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ ok: false, error: "No file provided" });
-
-    const folder = req.query.folder || process.env.CLOUDINARY_FOLDER || "firebolt/uploads";
-
-    const uploaded = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { folder, resource_type: "auto" }, // images, pdfs, etc.
-        (err, result) => (err ? reject(err) : resolve(result))
-      );
-      stream.end(req.file.buffer);
-    });
-
-    res.json({
-      ok: true,
-      url: uploaded.secure_url,
-      publicId: uploaded.public_id,
-      bytes: uploaded.bytes,
-      format: uploaded.format,
-    });
-  } catch (e) {
-    console.error("Upload error:", e);
-    res.status(500).json({ ok: false, error: "Upload failed" });
+// ----------------- Auth middleware (verify Firebase ID token)
+function verifyFirebaseToken(req, res, next) {
+  const authHeader = req.headers.authorization || "";
+  const match = authHeader.match(/^Bearer (.+)$/);
+  if (!match) {
+    return res.status(401).json({ ok: false, error: "Missing Bearer token" });
   }
+
+  const idToken = match[1];
+  admin
+    .auth()
+    .verifyIdToken(idToken)
+    .then((decoded) => {
+      req.user = decoded; // { uid, email, ... }
+      next();
+    })
+    .catch((err) => {
+      console.error("verifyIdToken error:", err?.message || err);
+      res.status(401).json({ ok: false, error: "Invalid or expired token" });
+    });
+}
+
+// ----------------- Protected routes
+
+// Example: list uploads (stub). Replace with Firestore query if you save uploads.
+app.get("/uploads", verifyFirebaseToken, async (req, res) => {
+  // Example if you later store docs in Firestore:
+  // const snap = await db.collection("uploads").where("uid", "==", req.user.uid).get();
+  // const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  res.json({ ok: true, uid: req.user.uid, uploads: [] });
 });
 
-// (optional) helpful root route
-app.get("/", (_, res) => res.send("Backend is running. Try GET /health or POST /upload."));
+// Upload file -> (optional) Cloudinary -> (optional) save to Firestore
+app.post(
+  "/upload",
+  verifyFirebaseToken,
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ ok: false, error: "No file provided" });
+      }
 
+      // If Cloudinary is configured, upload the temp file there
+      let uploaded = null;
+      if (cloudinary && process.env.CLOUDINARY_URL) {
+        uploaded = await cloudinary.uploader.upload(req.file.path, {
+          folder: `firebolt/${req.user.uid}`,
+        });
+      }
+
+      // Clean up the temp file
+      fs.unlink(req.file.path, () => {});
+
+      // (Optional) save a record to Firestore
+      // const doc = {
+      //   uid: req.user.uid,
+      //   filename: req.file.originalname,
+      //   url: uploaded ? uploaded.secure_url : null,
+      //   publicId: uploaded ? uploaded.public_id : null,
+      //   bytes: uploaded ? uploaded.bytes : req.file.size,
+      //   createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      // };
+      // const ref = await db.collection("uploads").add(doc);
+
+      return res.json({
+        ok: true,
+        uploadedBy: req.user.uid,
+        file: {
+          originalName: req.file.originalname,
+          size: req.file.size,
+          mime: req.file.mimetype,
+        },
+        cloudinary: uploaded
+          ? {
+              url: uploaded.secure_url,
+              public_id: uploaded.public_id,
+              bytes: uploaded.bytes,
+              format: uploaded.format,
+            }
+          : null,
+        // id: ref?.id || null,
+      });
+    } catch (err) {
+      console.error("upload error:", err);
+      return res.status(500).json({ ok: false, error: "Upload failed" });
+    }
+  }
+);
+
+
+// ----------------- Start server
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`✅ Backend running on http://localhost:${PORT}`));
+// Silences Chrome/DevTools probe (returns 204 No Content)
+app.get("/.well-known/appspecific/com.chrome.devtools.json", (_req, res) => {
+  res.status(204).end();
+});
+
+app.listen(PORT, () =>
+  console.log(`✅ Backend running on http://localhost:${PORT}`)
+);

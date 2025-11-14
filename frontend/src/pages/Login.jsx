@@ -29,6 +29,7 @@ export default function Login() {
     setErr("");
     try {
       await login(data.email, data.password);
+      console.log("LOGIN OK");
       navigate("/dashboard", { replace: true });
     } catch (e) {
       console.error(e);
