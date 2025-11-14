@@ -3,22 +3,43 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Reset from "@/pages/Reset";
 import Dashboard from "@/pages/Dashboard";
+import Profile from "@/pages/Profile";
+import Offers from "@/pages/Offers";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 
 export default function App() {
   return (
     <Routes>
+      {/* Public auth routes */}
       <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/reset" element={<Reset />} />
 
-      {/* Protected Dashboard Route */}
+      {/* Protected routes */}
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/offers"
+        element={
+          <ProtectedRoute>
+            <Offers />
           </ProtectedRoute>
         }
       />

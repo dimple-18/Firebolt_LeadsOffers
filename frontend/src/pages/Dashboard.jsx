@@ -1,35 +1,47 @@
-import { useEffect } from "react";
+import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
-import { authedFetch } from "@/lib/authedFetch";
 
 export default function Dashboard() {
-  // 🔥 TEST BACKEND WITH TOKEN AUTOMATICALLY
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await authedFetch("http://localhost:3001/uploads");
-        const data = await res.json();
-        console.log("Backend response:", data);
-      } catch (err) {
-        console.error("Backend error:", err);
-      }
-    })();
-  }, []);
-
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Topbar />
+    <div className="flex">
+      {/* Left sidebar */}
+      <Sidebar />
 
-      <main className="grid place-items-center py-24">
-        <div className="bg-white p-10 rounded-2xl shadow w-full max-w-xl text-center">
-          <h1 className="text-3xl font-bold text-slate-800">
-            Dashboard (Protected)
+      {/* Right content area */}
+      <div className="flex-1 min-h-screen bg-slate-50">
+        <Topbar />
+
+        <main className="p-10">
+          <h1 className="text-3xl font-bold text-slate-800 mb-4">
+            Dashboard
           </h1>
-          <p className="mt-3 text-slate-600">
-            You are logged in. This page is protected by Firebase Auth.
+
+          <p className="text-slate-600 mb-6">
+            Welcome to your dashboard. From here you&apos;ll be able to manage your profile and offers.
           </p>
-        </div>
-      </main>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="bg-white rounded-xl shadow p-4">
+              <h2 className="font-semibold text-slate-800">Profile</h2>
+              <p className="text-sm text-slate-600 mt-1">
+                View and edit your account details.
+              </p>
+            </div>
+            <div className="bg-white rounded-xl shadow p-4">
+              <h2 className="font-semibold text-slate-800">My Offers</h2>
+              <p className="text-sm text-slate-600 mt-1">
+                See offers assigned to you and accept/decline them.
+              </p>
+            </div>
+            <div className="bg-white rounded-xl shadow p-4">
+              <h2 className="font-semibold text-slate-800">Activity</h2>
+              <p className="text-sm text-slate-600 mt-1">
+                Coming soon: recent actions and notifications.
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
