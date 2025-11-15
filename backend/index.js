@@ -114,6 +114,26 @@ app.get("/profile", verifyFirebaseToken, async (req, res) => {
       });
     }
 
+    // ----------------- Admin-only middleware
+async function verifyAdmin(req, res, next) {
+  try {
+    const uid = req.user.uid;
+
+    const snap = await db.collection("users").doc(uid).get();
+    const data = snap.data();
+
+    if (!data || data.role !== "admin") {
+      return res.status(403).json({ ok: false, error: "Admin access only" });
+    }
+
+    next();
+  } catch (err) {
+    console.error("verifyAdmin error:", err);
+    return res.status(500).json({ ok: false, error: "Admin check failed" });
+  }
+}
+
+
     const data = snap.data();
 
     return res.json({
