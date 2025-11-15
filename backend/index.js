@@ -1,4 +1,5 @@
 // backend/index.js
+
 // ----------------- Core setup
 require("dotenv").config(); // loads .env if present
 
@@ -30,7 +31,7 @@ if (!admin.apps.length) {
   );
 }
 
-const db = admin.firestore(); // (optional) if you’ll save docs later
+const db = admin.firestore();
 
 // ----------------- Optional Cloudinary
 // If CLOUDINARY_URL is set in .env, this will be used automatically.
@@ -69,11 +70,13 @@ app.get("/.well-known/appspecific/com.chrome.devtools.json", (_req, res) => {
 function verifyFirebaseToken(req, res, next) {
   const authHeader = req.headers.authorization || "";
   const match = authHeader.match(/^Bearer (.+)$/);
+
   if (!match) {
     return res.status(401).json({ ok: false, error: "Missing Bearer token" });
   }
 
   const idToken = match[1];
+
   admin
     .auth()
     .verifyIdToken(idToken)
@@ -87,75 +90,84 @@ function verifyFirebaseToken(req, res, next) {
     });
 }
 
-// ----------------- Protected routes
+// ----------------- PROTECTED ROUTES
 
-// Example: list uploads (stub). Replace with Firestore query if you save uploads.
-app.get("/uploads", verifyFirebaseToken, async (req, res) => {
-  // Example if you later store docs in Firestore:
-  // const snap = await db.collection("uploads").where("uid", "==", req.user.uid).get();
-  // const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  res.json({ ok: true, uid: req.user.uid, uploads: [] });
-});
+// ===== PROFILE API =====
 
-// Upload file -> (optional) Cloudinary -> (optional) save to Firestore
-app.post(
-  "/upload",
-  verifyFirebaseToken,
-  upload.single("file"),
-  async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ ok: false, error: "No file provided" });
-      }
+// GET /profile  → read profile for logged-in user
+app.get("/profile", verifyFirebaseToken, async (req, res) => {
+  try {
+    const uid = req.user.uid;
 
-      // If Cloudinary is configured, upload the temp file there
-      let uploaded = null;
-      if (cloudinary && process.env.CLOUDINARY_URL) {
-        uploaded = await cloudinary.uploader.upload(req.file.path, {
-          folder: `firebolt/${req.user.uid}`,
-        });
-      }
+    const docRef = db.collection("users").doc(uid);
+    const snap = await docRef.get();
 
-      // Clean up the temp file
-      fs.unlink(req.file.path, () => {});
-
-      // (Optional) save a record to Firestore
-      // const doc = {
-      //   uid: req.user.uid,
-      //   filename: req.file.originalname,
-      //   url: uploaded ? uploaded.secure_url : null,
-      //   publicId: uploaded ? uploaded.public_id : null,
-      //   bytes: uploaded ? uploaded.bytes : req.file.size,
-      //   createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      // };
-      // const ref = await db.collection("uploads").add(doc);
-
+    if (!snap.exists) {
+      // Fallback if no doc yet: use token data
       return res.json({
         ok: true,
-        uploadedBy: req.user.uid,
-        file: {
-          originalName: req.file.originalname,
-          size: req.file.size,
-          mime: req.file.mimetype,
+        profile: {
+          uid,
+          email: req.user.email || "",
+          displayName: req.user.name || "",
         },
-        cloudinary: uploaded
-          ? {
-              url: uploaded.secure_url,
-              public_id: uploaded.public_id,
-              bytes: uploaded.bytes,
-              format: uploaded.format,
-            }
-          : null,
-        // id: ref?.id || null,
       });
-    } catch (err) {
-      console.error("upload error:", err);
-      return res.status(500).json({ ok: false, error: "Upload failed" });
     }
-  }
-);
 
-// ----------------- Offers API (protected)
+    const data = snap.data();
+
+    return res.json({
+      ok: true,
+      profile: {
+        uid,
+        email: data.email || req.user.email || "",
+        displayName: data.displayName || req.user.name || "",
+        createdAt: data.createdAt || null,
+        updatedAt: data.updatedAt || null,
+      },
+    });
+  } catch (err) {
+    console.error("GET /profile error:", err);
+    res.status(500).json({ ok: false, error: "Failed to load profile" });
+  }
+});
+
+// POST /profile  → update displayName (and Firestore)
+app.post("/profile", verifyFirebaseToken, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const { displayName } = req.body;
+
+    if (!displayName || typeof displayName !== "string") {
+      return res.status(400).json({ ok: false, error: "displayName is required" });
+    }
+
+    // Update Firebase Auth displayName (best-effort)
+    try {
+      await admin.auth().updateUser(uid, { displayName });
+    } catch (err) {
+      console.warn("updateUser warning:", err?.message || err);
+    }
+
+    // Update Firestore profile document
+    const docRef = db.collection("users").doc(uid);
+    await docRef.set(
+      {
+        displayName,
+        email: req.user.email || "",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    res.json({ ok: true, message: "Profile updated" });
+  } catch (err) {
+    console.error("POST /profile error:", err);
+    res.status(500).json({ ok: false, error: "Failed to update profile" });
+  }
+});
+
+// ===== OFFERS API =====
 
 // GET /offers  → list offers for logged-in user
 app.get("/offers", verifyFirebaseToken, async (req, res) => {
@@ -239,6 +251,62 @@ app.post("/offers/:id/decline", verifyFirebaseToken, async (req, res) => {
     res.status(500).json({ ok: false, error: "Failed to decline offer" });
   }
 });
+
+// ===== UPLOADS API (you already had this) =====
+
+// Example: list uploads (stub). Replace with Firestore query if you save uploads.
+app.get("/uploads", verifyFirebaseToken, async (req, res) => {
+  // Example if you later store docs in Firestore:
+  // const snap = await db.collection("uploads").where("uid", "==", req.user.uid).get();
+  // const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  res.json({ ok: true, uid: req.user.uid, uploads: [] });
+});
+
+// Upload file -> (optional) Cloudinary -> (optional) save to Firestore
+app.post(
+  "/upload",
+  verifyFirebaseToken,
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ ok: false, error: "No file provided" });
+      }
+
+      // If Cloudinary is configured, upload the temp file there
+      let uploaded = null;
+      if (cloudinary && process.env.CLOUDINARY_URL) {
+        uploaded = await cloudinary.uploader.upload(req.file.path, {
+          folder: `firebolt/${req.user.uid}`,
+        });
+      }
+
+      // Clean up the temp file
+      fs.unlink(req.file.path, () => {});
+
+      return res.json({
+        ok: true,
+        uploadedBy: req.user.uid,
+        file: {
+          originalName: req.file.originalname,
+          size: req.file.size,
+          mime: req.file.mimetype,
+        },
+        cloudinary: uploaded
+          ? {
+              url: uploaded.secure_url,
+              public_id: uploaded.public_id,
+              bytes: uploaded.bytes,
+              format: uploaded.format,
+            }
+          : null,
+      });
+    } catch (err) {
+      console.error("upload error:", err);
+      return res.status(500).json({ ok: false, error: "Upload failed" });
+    }
+  }
+);
 
 // ----------------- Start server
 const PORT = process.env.PORT || 3001;
