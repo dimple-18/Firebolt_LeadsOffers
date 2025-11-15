@@ -205,6 +205,12 @@ app.get("/offers", verifyFirebaseToken, async (req, res) => {
       ...doc.data(),
     }));
 
+    // ADMIN TEST ROUTE
+app.get("/admin/test", verifyFirebaseToken, verifyAdmin, (req, res) => {
+  res.json({ ok: true, message: "Admin access granted!" });
+});
+
+
     res.json({ ok: true, offers });
   } catch (err) {
     console.error("GET /offers error:", err);
