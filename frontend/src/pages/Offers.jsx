@@ -3,6 +3,17 @@ import Topbar from "@/components/Topbar";
 import Sidebar from "@/components/Sidebar";
 import { authedFetch } from "@/lib/authedFetch";
 
+// Helper to format Firestore Timestamp or ISO string
+function formatDate(createdAt) {
+  if (!createdAt) return "";
+  // If it’s a Firestore Timestamp object from backend
+  if (createdAt.seconds) {
+    return new Date(createdAt.seconds * 1000).toLocaleDateString();
+  }
+  // Fallback if backend ever sends an ISO string
+  return new Date(createdAt).toLocaleDateString();
+}
+
 export default function Offers() {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -105,13 +116,22 @@ export default function Offers() {
                   <h2 className="text-lg font-semibold text-slate-900">
                     {offer.title || "Untitled offer"}
                   </h2>
+
                   {offer.description && (
                     <p className="mt-2 text-sm text-slate-600">
                       {offer.description}
                     </p>
                   )}
 
+                  {/* Created date */}
                   <div className="mt-3 text-xs text-slate-500">
+                    {offer.createdAt && (
+                      <>Created: {formatDate(offer.createdAt)}</>
+                    )}
+                  </div>
+
+                  {/* Status */}
+                  <div className="mt-1 text-xs text-slate-500">
                     Status:{" "}
                     <span
                       className={
