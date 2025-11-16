@@ -17,7 +17,6 @@ let serviceAccount;
 try {
   serviceAccount = require("./config/serviceAccountKey.json");
 } catch {
-  // You can also set GOOGLE_APPLICATION_CREDENTIALS env instead of the file.
   console.warn(
     "⚠️ serviceAccountKey.json not found. Make sure GOOGLE_APPLICATION_CREDENTIALS is set, or add backend/config/serviceAccountKey.json"
   );
@@ -34,8 +33,6 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 // ----------------- Optional Cloudinary
-// If CLOUDINARY_URL is set in .env, this will be used automatically.
-// Example: CLOUDINARY_URL=cloudinary://<api_key>:<api_secret>@<cloud_name>
 let cloudinary = null;
 try {
   cloudinary = require("cloudinary").v2;
@@ -90,9 +87,7 @@ function verifyFirebaseToken(req, res, next) {
     });
 }
 
-// ================== ADMIN MIDDLEWARE & ROUTES ==================
-
-// Admin-only middleware: checks Firestore `users/{uid}.role === "admin"`
+// ----------------- Admin-only middleware
 async function verifyAdmin(req, res, next) {
   try {
     const uid = req.user.uid;
@@ -111,12 +106,49 @@ async function verifyAdmin(req, res, next) {
   }
 }
 
-// Simple admin test route
+// ===== ADMIN TEST ROUTE =====
 app.get("/admin/test", verifyFirebaseToken, verifyAdmin, (req, res) => {
   res.json({ ok: true, message: "Admin access granted!" });
 });
 
-// ================== PROFILE API ==================
+// ===== ADMIN SUMMARY ROUTE =====
+// GET /admin/summary -> counts for dashboard cards
+app.get("/admin/summary", verifyFirebaseToken, verifyAdmin, async (req, res) => {
+  try {
+    const usersSnap = await db.collection("users").get();
+    const offersSnap = await db.collection("offers").get();
+
+    const usersCount = usersSnap.size;
+    const offersCount = offersSnap.size;
+
+    let acceptedCount = 0;
+    let declinedCount = 0;
+    let pendingCount = 0;
+
+    offersSnap.forEach((docSnap) => {
+      const status = (docSnap.data().status || "pending").toLowerCase();
+      if (status === "accepted") acceptedCount++;
+      else if (status === "declined") declinedCount++;
+      else pendingCount++;
+    });
+
+    res.json({
+      ok: true,
+      stats: {
+        usersCount,
+        offersCount,
+        acceptedCount,
+        declinedCount,
+        pendingCount,
+      },
+    });
+  } catch (err) {
+    console.error("GET /admin/summary error:", err);
+    res.status(500).json({ ok: false, error: "Failed to load admin summary" });
+  }
+});
+
+// ===== PROFILE API =====
 
 // GET /profile  → read profile for logged-in user
 app.get("/profile", verifyFirebaseToken, async (req, res) => {
@@ -127,7 +159,6 @@ app.get("/profile", verifyFirebaseToken, async (req, res) => {
     const snap = await docRef.get();
 
     if (!snap.exists) {
-      // Fallback if no doc yet: use token data
       return res.json({
         ok: true,
         profile: {
@@ -148,7 +179,6 @@ app.get("/profile", verifyFirebaseToken, async (req, res) => {
         displayName: data.displayName || req.user.name || "",
         createdAt: data.createdAt || null,
         updatedAt: data.updatedAt || null,
-        role: data.role || null,
       },
     });
   } catch (err) {
@@ -169,14 +199,12 @@ app.post("/profile", verifyFirebaseToken, async (req, res) => {
         .json({ ok: false, error: "displayName is required" });
     }
 
-    // Update Firebase Auth displayName (best-effort)
     try {
       await admin.auth().updateUser(uid, { displayName });
     } catch (err) {
       console.warn("updateUser warning:", err?.message || err);
     }
 
-    // Update Firestore profile document
     const docRef = db.collection("users").doc(uid);
     await docRef.set(
       {
@@ -194,7 +222,7 @@ app.post("/profile", verifyFirebaseToken, async (req, res) => {
   }
 });
 
-// ================== OFFERS API ==================
+// ===== OFFERS API =====
 
 // GET /offers  → list offers for logged-in user
 app.get("/offers", verifyFirebaseToken, async (req, res) => {
@@ -279,17 +307,11 @@ app.post("/offers/:id/decline", verifyFirebaseToken, async (req, res) => {
   }
 });
 
-// ================== UPLOADS API ==================
-
-// Example: list uploads (stub). Replace with Firestore query if you save uploads.
+// ===== UPLOADS API =====
 app.get("/uploads", verifyFirebaseToken, async (req, res) => {
-  // Example if you later store docs in Firestore:
-  // const snap = await db.collection("uploads").where("uid", "==", req.user.uid).get();
-  // const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   res.json({ ok: true, uid: req.user.uid, uploads: [] });
 });
 
-// Upload file -> (optional) Cloudinary -> (optional) save to Firestore
 app.post(
   "/upload",
   verifyFirebaseToken,
@@ -300,7 +322,6 @@ app.post(
         return res.status(400).json({ ok: false, error: "No file provided" });
       }
 
-      // If Cloudinary is configured, upload the temp file there
       let uploaded = null;
       if (cloudinary && process.env.CLOUDINARY_URL) {
         uploaded = await cloudinary.uploader.upload(req.file.path, {
@@ -308,7 +329,6 @@ app.post(
         });
       }
 
-      // Clean up the temp file
       fs.unlink(req.file.path, () => {});
 
       return res.json({
