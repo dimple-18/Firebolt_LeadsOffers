@@ -5,13 +5,22 @@ import { authedFetch } from "@/lib/authedFetch";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Small helper card for stats
-function StatCard({ label, value }) {
+function StatCard({ label, value, accent = "default" }) {
+  const accentClasses =
+    accent === "green"
+      ? "bg-green-50 text-green-800 border-green-100"
+      : accent === "red"
+      ? "bg-red-50 text-red-800 border-red-100"
+      : accent === "orange"
+      ? "bg-orange-50 text-orange-800 border-orange-100"
+      : "bg-slate-50 text-slate-800 border-slate-100";
+
   return (
-    <div className="bg-white rounded-xl shadow p-4">
-      <div className="text-xs uppercase tracking-wide text-slate-500">
+    <div className={`rounded-xl border ${accentClasses} p-4`}>
+      <div className="text-xs uppercase tracking-wide font-semibold opacity-80">
         {label}
       </div>
-      <div className="mt-2 text-2xl font-bold text-slate-900">{value}</div>
+      <div className="mt-2 text-2xl font-bold">{value}</div>
     </div>
   );
 }
@@ -64,19 +73,28 @@ function AdminSummary() {
 
   if (!stats) return null;
 
+  const {
+    usersCount,
+    offersCount,
+    acceptedCount,
+    declinedCount,
+    pendingCount,
+  } = stats;
+
   return (
-    <div className="mt-6 grid gap-4 md:grid-cols-4">
-      <StatCard label="Total users" value={stats.usersCount} />
-      <StatCard label="Total offers" value={stats.offersCount} />
-      <StatCard label="Accepted" value={stats.acceptedCount} />
-      <StatCard label="Pending / other" value={stats.pendingCount} />
+    <div className="mt-6 grid gap-4 md:grid-cols-5">
+      <StatCard label="Total users" value={usersCount} />
+      <StatCard label="Total offers" value={offersCount} />
+      <StatCard label="Accepted" value={acceptedCount} accent="green" />
+      <StatCard label="Declined" value={declinedCount} accent="red" />
+      <StatCard label="Pending" value={pendingCount} accent="orange" />
     </div>
   );
 }
 
 export default function Admin() {
   const { user } = useAuth();
-  const isAdmin = user?.email === "kumari18dimple@gmail.com"; // 👈 admin check
+  const isAdmin = user?.email === "kumari18dimple@gmail.com"; // frontend check
 
   if (!isAdmin) {
     // User is logged in (ProtectedRoute) but not admin
@@ -105,29 +123,53 @@ export default function Admin() {
         <Topbar />
 
         <main className="p-10">
-          <h1 className="text-3xl font-bold text-slate-900">
-            Admin Dashboard
-          </h1>
-          <p className="text-slate-600 mt-2 mb-6">
-            Overview of users and offers across the platform.
-          </p>
+          <header className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">
+                Admin Dashboard
+              </h1>
+              <p className="text-slate-600 mt-2">
+                High-level overview of users and offers across Firebolt.
+              </p>
+            </div>
+          </header>
 
           {/* Overview stats */}
           <AdminSummary />
 
-          {/* Placeholder for future sections */}
-          <section className="mt-10">
-            <h2 className="text-lg font-semibold text-slate-900 mb-2">
-              Coming next
-            </h2>
-            <p className="text-sm text-slate-600">
-              Here we&apos;ll add admin-only tools like:
-            </p>
-            <ul className="mt-2 list-disc list-inside text-sm text-slate-600">
-              <li>Users list & roles</li>
-              <li>All offers table</li>
-              <li>Create & assign offers</li>
-            </ul>
+          {/* Quick admin actions */}
+          <section className="mt-10 grid gap-4 md:grid-cols-2">
+            <div className="bg-white rounded-2xl shadow border border-slate-200 p-6">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Manage users
+              </h2>
+              <p className="text-sm text-slate-600 mt-2">
+                View all registered users, check their roles, and promote or
+                demote admins.
+              </p>
+              <a
+                href="/admin/users"
+                className="inline-flex items-center mt-4 text-sm font-medium text-slate-900 hover:underline"
+              >
+                Go to Users &rarr;
+              </a>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow border border-slate-200 p-6">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Manage offers
+              </h2>
+              <p className="text-sm text-slate-600 mt-2">
+                See all offers across users, create new offers, or track
+                accepted / declined states.
+              </p>
+              <a
+                href="/admin/offers"
+                className="inline-flex items-center mt-4 text-sm font-medium text-slate-900 hover:underline"
+              >
+                Go to Offers &rarr;
+              </a>
+            </div>
           </section>
         </main>
       </div>
