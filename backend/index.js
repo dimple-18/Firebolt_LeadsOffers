@@ -148,6 +148,36 @@ app.get("/admin/summary", verifyFirebaseToken, verifyAdmin, async (req, res) => 
   }
 });
 
+// ===== ADMIN USERS LIST ROUTE =====
+// GET /admin/users -> list all users from Firestore "users" collection
+app.get("/admin/users", verifyFirebaseToken, verifyAdmin, async (req, res) => {
+  try {
+    const snap = await db.collection("users").get();
+
+    const users = snap.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        email: data.email || "",
+        displayName: data.displayName || "",
+        role: data.role || "user",
+        createdAt: data.createdAt
+          ? data.createdAt.toDate().toISOString()
+          : null,
+        updatedAt: data.updatedAt
+          ? data.updatedAt.toDate().toISOString()
+          : null,
+      };
+    });
+
+    res.json({ ok: true, users });
+  } catch (err) {
+    console.error("GET /admin/users error:", err);
+    res.status(500).json({ ok: false, error: "Failed to load users" });
+  }
+});
+
+
 // ===== PROFILE API =====
 
 // GET /profile  → read profile for logged-in user

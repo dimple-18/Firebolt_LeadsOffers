@@ -1,11 +1,18 @@
+import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import { useAuth } from "@/contexts/AuthContext";
+import { authedFetch } from "@/lib/authedFetch";
 
 export default function AdminUsers() {
   const { user } = useAuth();
   const isAdmin = user?.email === "kumari18dimple@gmail.com";
 
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // If not admin, show access denied
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -22,6 +29,48 @@ export default function AdminUsers() {
     );
   }
 
+  // Load users on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadUsers() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const res = await authedFetch("http://localhost:3001/admin/users");
+        const data = await res.json();
+
+        if (cancelled) return;
+
+        if (!data.ok) {
+          setError(data.error || "Failed to load users");
+        } else {
+          setUsers(data.users || []);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || "Failed to load users");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadUsers();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function formatDate(isoString) {
+    if (!isoString) return "-";
+    // quick human readable format
+    const d = new Date(isoString);
+    if (Number.isNaN(d.getTime())) return "-";
+    return d.toLocaleString();
+  }
+
   return (
     <div className="flex">
       <Sidebar />
@@ -32,15 +81,78 @@ export default function AdminUsers() {
             Admin – Users
           </h1>
           <p className="text-slate-600 mb-6">
-            Here we&apos;ll show a table of all users with their roles and
-            details.
+            List of all users stored in the Firebolt platform.
           </p>
 
-          <div className="bg-white rounded-xl shadow p-6 border border-slate-200">
-            <p className="text-sm text-slate-500">
-              Coming soon: users table (name, email, role, createdAt).
+          {loading && (
+            <p className="text-sm text-slate-500 mb-4">Loading users…</p>
+          )}
+
+          {!loading && error && (
+            <p className="text-sm text-red-600 mb-4">{error}</p>
+          )}
+
+          {!loading && !error && users.length === 0 && (
+            <p className="text-sm text-slate-500 mb-4">
+              No users found in Firestore &quot;users&quot; collection.
             </p>
-          </div>
+          )}
+
+          {!loading && !error && users.length > 0 && (
+            <div className="bg-white rounded-xl shadow border border-slate-200 overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left px-4 py-2 font-semibold text-slate-700">
+                      Name
+                    </th>
+                    <th className="text-left px-4 py-2 font-semibold text-slate-700">
+                      Email
+                    </th>
+                    <th className="text-left px-4 py-2 font-semibold text-slate-700">
+                      Role
+                    </th>
+                    <th className="text-left px-4 py-2 font-semibold text-slate-700">
+                      Created
+                    </th>
+                    <th className="text-left px-4 py-2 font-semibold text-slate-700">
+                      Updated
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr
+                      key={u.id}
+                      className="border-t border-slate-100 hover:bg-slate-50"
+                    >
+                      <td className="px-4 py-2 text-slate-900">
+                        {u.displayName || "-"}
+                      </td>
+                      <td className="px-4 py-2 text-slate-700">{u.email}</td>
+                      <td className="px-4 py-2">
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            u.role === "admin"
+                              ? "bg-purple-100 text-purple-700"
+                              : "bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-slate-500">
+                        {formatDate(u.createdAt)}
+                      </td>
+                      <td className="px-4 py-2 text-slate-500">
+                        {formatDate(u.updatedAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </main>
       </div>
     </div>
