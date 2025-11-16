@@ -6,6 +6,7 @@ import Dashboard from "@/pages/Dashboard";
 import Profile from "@/pages/Profile";
 import Offers from "@/pages/Offers";
 import ProtectedRoute from "@/routes/ProtectedRoute";
+import Admin from "@/pages/Admin"; // 👈 NEW
 
 export default function App() {
   return (
@@ -40,6 +41,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Offers />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* 🔐 Admin-only route (still wrapped in ProtectedRoute) */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <Admin />
           </ProtectedRoute>
         }
       />
