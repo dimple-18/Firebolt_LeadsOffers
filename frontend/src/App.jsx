@@ -6,7 +6,9 @@ import Dashboard from "@/pages/Dashboard";
 import Profile from "@/pages/Profile";
 import Offers from "@/pages/Offers";
 import ProtectedRoute from "@/routes/ProtectedRoute";
-import Admin from "@/pages/Admin"; // 👈 NEW
+import Admin from "@/pages/Admin";
+import AdminUsers from "@/pages/AdminUsers";
+import AdminOffers from "@/pages/AdminOffers";
 
 export default function App() {
   return (
@@ -45,12 +47,30 @@ export default function App() {
         }
       />
 
-      {/* 🔐 Admin-only route (still wrapped in ProtectedRoute) */}
+      {/* Admin routes (still protected by auth) */}
       <Route
         path="/admin"
         element={
           <ProtectedRoute>
             <Admin />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute>
+            <AdminUsers />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/offers"
+        element={
+          <ProtectedRoute>
+            <AdminOffers />
           </ProtectedRoute>
         }
       />
