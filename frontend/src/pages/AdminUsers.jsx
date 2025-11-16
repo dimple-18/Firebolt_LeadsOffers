@@ -12,6 +12,35 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+    async function handleChangeRole(userId, nextRole) {
+    if (!window.confirm(`Change this user's role to "${nextRole}"?`)) return;
+
+    try {
+      const res = await authedFetch(
+        `http://localhost:3001/admin/users/${userId}/role`,
+        {
+          method: "POST",
+          body: JSON.stringify({ role: nextRole }),
+        }
+      );
+
+      const data = await res.json();
+      if (!data.ok) {
+        throw new Error(data.error || "Failed to update role");
+      }
+
+      // Update local state
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, role: data.role, updatedAt: new Date().toISOString() } : u
+        )
+      );
+    } catch (err) {
+      alert("Could not update role: " + (err.message || err));
+    }
+  }
+
+
   // If not admin, show access denied
   if (!isAdmin) {
     return (
@@ -101,56 +130,77 @@ export default function AdminUsers() {
           {!loading && !error && users.length > 0 && (
             <div className="bg-white rounded-xl shadow border border-slate-200 overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left px-4 py-2 font-semibold text-slate-700">
-                      Name
-                    </th>
-                    <th className="text-left px-4 py-2 font-semibold text-slate-700">
-                      Email
-                    </th>
-                    <th className="text-left px-4 py-2 font-semibold text-slate-700">
-                      Role
-                    </th>
-                    <th className="text-left px-4 py-2 font-semibold text-slate-700">
-                      Created
-                    </th>
-                    <th className="text-left px-4 py-2 font-semibold text-slate-700">
-                      Updated
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => (
-                    <tr
-                      key={u.id}
-                      className="border-t border-slate-100 hover:bg-slate-50"
-                    >
-                      <td className="px-4 py-2 text-slate-900">
-                        {u.displayName || "-"}
-                      </td>
-                      <td className="px-4 py-2 text-slate-700">{u.email}</td>
-                      <td className="px-4 py-2">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            u.role === "admin"
-                              ? "bg-purple-100 text-purple-700"
-                              : "bg-slate-100 text-slate-700"
-                          }`}
-                        >
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-slate-500">
-                        {formatDate(u.createdAt)}
-                      </td>
-                      <td className="px-4 py-2 text-slate-500">
-                        {formatDate(u.updatedAt)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+  <thead>
+    <tr className="bg-slate-50 border-b border-slate-200">
+      <th className="text-left px-4 py-2 font-semibold text-slate-700">
+        Name
+      </th>
+      <th className="text-left px-4 py-2 font-semibold text-slate-700">
+        Email
+      </th>
+      <th className="text-left px-4 py-2 font-semibold text-slate-700">
+        Role
+      </th>
+      <th className="text-left px-4 py-2 font-semibold text-slate-700">
+        Created
+      </th>
+      <th className="text-left px-4 py-2 font-semibold text-slate-700">
+        Updated
+      </th>
+      <th className="text-left px-4 py-2 font-semibold text-slate-700">
+        Actions
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    {users.map((u) => (
+      <tr
+        key={u.id}
+        className="border-t border-slate-100 hover:bg-slate-50"
+      >
+        <td className="px-4 py-2 text-slate-900">
+          {u.displayName || "-"}
+        </td>
+        <td className="px-4 py-2 text-slate-700">{u.email}</td>
+        <td className="px-4 py-2">
+          <span
+            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+              u.role === "admin"
+                ? "bg-purple-100 text-purple-700"
+                : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            {u.role}
+          </span>
+        </td>
+        <td className="px-4 py-2 text-slate-500">
+          {formatDate(u.createdAt)}
+        </td>
+        <td className="px-4 py-2 text-slate-500">
+          {formatDate(u.updatedAt)}
+        </td>
+        <td className="px-4 py-2 text-slate-500">
+          {u.role === "admin" ? (
+            <button
+              onClick={() => handleChangeRole(u.id, "user")}
+              className="text-xs px-3 py-1 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100"
+            >
+              Remove admin
+            </button>
+          ) : (
+            <button
+              onClick={() => handleChangeRole(u.id, "admin")}
+              className="text-xs px-3 py-1 rounded-md bg-purple-600 text-white hover:bg-purple-700"
+            >
+              Make admin
+            </button>
+          )}
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
             </div>
           )}
         </main>

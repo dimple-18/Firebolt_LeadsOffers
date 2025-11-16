@@ -170,6 +170,49 @@ app.get("/admin/users", verifyFirebaseToken, verifyAdmin, async (req, res) => {
       };
     });
 
+    // ===== ADMIN: UPDATE USER ROLE =====
+// POST /admin/users/:id/role  { role: "admin" | "user" }
+app.post(
+  "/admin/users/:id/role",
+  verifyFirebaseToken,
+  verifyAdmin,
+  async (req, res) => {
+    try {
+      const userId = req.params.id;
+      const { role } = req.body;
+
+      if (role !== "admin" && role !== "user") {
+        return res
+          .status(400)
+          .json({ ok: false, error: "role must be 'admin' or 'user'" });
+      }
+
+      const docRef = db.collection("users").doc(userId);
+      const snap = await docRef.get();
+
+      if (!snap.exists) {
+        return res.status(404).json({ ok: false, error: "User not found" });
+      }
+
+      await docRef.set(
+        {
+          role,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      return res.json({ ok: true, id: userId, role });
+    } catch (err) {
+      console.error("POST /admin/users/:id/role error:", err);
+      return res
+        .status(500)
+        .json({ ok: false, error: "Failed to update user role" });
+    }
+  }
+);
+
+
     res.json({ ok: true, users });
   } catch (err) {
     console.error("GET /admin/users error:", err);
