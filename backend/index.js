@@ -177,6 +177,65 @@ app.get("/admin/users", verifyFirebaseToken, verifyAdmin, async (req, res) => {
   }
 });
 
+// ===== ADMIN: GET ALL OFFERS =====
+// GET /admin/offers -> list ALL offers in Firestore
+app.get("/admin/offers", verifyFirebaseToken, verifyAdmin, async (req, res) => {
+  try {
+    const snap = await db
+      .collection("offers")
+      .orderBy("createdAt", "desc")
+      .get();
+
+    const offers = snap.docs.map((doc) => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        userId: d.userId || "",
+        title: d.title || "",
+        description: d.description || "",
+        status: d.status || "pending",
+        createdAt: d.createdAt ? d.createdAt.toDate().toISOString() : null,
+        updatedAt: d.updatedAt ? d.updatedAt.toDate().toISOString() : null,
+      };
+    });
+
+    res.json({ ok: true, offers });
+  } catch (err) {
+    console.error("GET /admin/offers error:", err);
+    res.status(500).json({ ok: false, error: "Failed to load offers" });
+  }
+});
+
+// ===== ADMIN: CREATE OFFER =====
+// POST /admin/offers -> create a new offer for a user
+app.post("/admin/offers", verifyFirebaseToken, verifyAdmin, async (req, res) => {
+  try {
+    const { userId, title, description, status } = req.body;
+
+    if (!userId || !title) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "userId and title are required" });
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    const ref = await db.collection("offers").add({
+      userId,
+      title,
+      description: description || "",
+      status: status || "pending",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    res.json({ ok: true, id: ref.id });
+  } catch (err) {
+    console.error("POST /admin/offers error:", err);
+    res.status(500).json({ ok: false, error: "Failed to create offer" });
+  }
+});
+
 
 // ===== PROFILE API =====
 
