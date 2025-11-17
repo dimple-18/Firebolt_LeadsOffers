@@ -1,59 +1,60 @@
 import { useEffect, useState } from "react";
-import Topbar from "@/components/Topbar";
 import Sidebar from "@/components/Sidebar";
+import Topbar from "@/components/Topbar";
 import { authedFetch } from "@/lib/authedFetch";
-
-// Helper to format Firestore Timestamp or ISO string
-function formatDate(createdAt) {
-  if (!createdAt) return "";
-  // If it’s a Firestore Timestamp object from backend
-  if (createdAt.seconds) {
-    return new Date(createdAt.seconds * 1000).toLocaleDateString();
-  }
-  // Fallback if backend ever sends an ISO string
-  return new Date(createdAt).toLocaleDateString();
-}
+import { useAuth } from "@/contexts/AuthContext";
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+} from "firebase/firestore";
 
 export default function Offers() {
+  const { user } = useAuth();
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState(null);
   const [error, setError] = useState("");
 
-  // Load offers on mount
+  // 🔁 Realtime listener: subscribe to Firestore offers for this user
   useEffect(() => {
-    let cancelled = false;
+    if (!user) return;
 
-    async function loadOffers() {
-      try {
-        setLoading(true);
-        setError("");
+    setLoading(true);
+    setError("");
 
-        const res = await authedFetch("http://localhost:3001/offers");
-        const data = await res.json();
+    // offers where userId == current user, ordered by createdAt desc
+    const q = query(
+      collection(db, "offers"),
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
 
-        if (cancelled) return;
-
-        if (!data.ok) {
-          setError(data.error || "Failed to load offers");
-        } else {
-          setOffers(data.offers || []);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err.message || "Failed to load offers");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const items = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }));
+        setOffers(items);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Offers listener error:", err);
+        setError(err.message || "Failed to listen for offers");
+        setLoading(false);
       }
-    }
+    );
 
-    loadOffers();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    // cleanup when component unmounts or user changes
+    return () => unsubscribe();
+  }, [user]);
 
+  // 🔘 Accept / Decline still go through backend (for business logic + checks)
   async function handleUpdateStatus(id, action) {
     try {
       setActionId(id);
@@ -69,16 +70,22 @@ export default function Offers() {
         throw new Error(data.error || "Failed to update offer");
       }
 
-      setOffers((prev) =>
-        prev.map((offer) =>
-          offer.id === id ? { ...offer, status: data.status } : offer
-        )
-      );
+      // ❗ We do NOT manually change offers[] now.
+      // Realtime Firestore listener will get the updated status automatically.
     } catch (err) {
+      console.error("Could not update offer:", err);
       alert("Could not update offer: " + (err.message || err));
     } finally {
       setActionId(null);
     }
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <p className="text-slate-600">You must be logged in to view offers.</p>
+      </div>
+    );
   }
 
   return (
@@ -89,9 +96,7 @@ export default function Offers() {
         <Topbar />
 
         <main className="px-8 py-10">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            My Offers
-          </h1>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">My Offers</h1>
           <p className="text-slate-600 mb-6">
             View the offers assigned to you and accept or decline them.
           </p>
@@ -123,15 +128,16 @@ export default function Offers() {
                     </p>
                   )}
 
-                  {/* Created date */}
-                  <div className="mt-3 text-xs text-slate-500">
-                    {offer.createdAt && (
-                      <>Created: {formatDate(offer.createdAt)}</>
-                    )}
-                  </div>
+                  {offer.createdAt && (
+                    <p className="mt-2 text-xs text-slate-400">
+                      Created:{" "}
+                      {offer.createdAt.toDate
+                        ? offer.createdAt.toDate().toLocaleString()
+                        : String(offer.createdAt)}
+                    </p>
+                  )}
 
-                  {/* Status */}
-                  <div className="mt-1 text-xs text-slate-500">
+                  <div className="mt-3 text-xs text-slate-500">
                     Status:{" "}
                     <span
                       className={
@@ -156,7 +162,7 @@ export default function Offers() {
                     className="flex-1 py-2 rounded-md text-sm font-medium
                       bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                   >
-                    {actionId === offer.id ? "Accepting…" : "Accept"}
+                    {actionId === offer.id ? "Updating…" : "Accept"}
                   </button>
                   <button
                     disabled={
