@@ -444,6 +444,7 @@ app.get("/uploads", verifyFirebaseToken, async (req, res) => {
   res.json({ ok: true, uid: req.user.uid, uploads: [] });
 });
 
+// Upload file -> Cloudinary -> save to Firestore
 app.post(
   "/upload",
   verifyFirebaseToken,
@@ -454,6 +455,7 @@ app.post(
         return res.status(400).json({ ok: false, error: "No file provided" });
       }
 
+      // If Cloudinary is configured, upload the temp file there
       let uploaded = null;
       if (cloudinary && process.env.CLOUDINARY_URL) {
         uploaded = await cloudinary.uploader.upload(req.file.path, {
@@ -461,7 +463,21 @@ app.post(
         });
       }
 
+      // Clean up the temp file
       fs.unlink(req.file.path, () => {});
+
+      // 🔥 NEW: save logo URL into Firestore user doc (if Cloudinary worked)
+      if (uploaded) {
+        const userDocRef = db.collection("users").doc(req.user.uid);
+        await userDocRef.set(
+          {
+            kycLogoUrl: uploaded.secure_url,
+            kycLogoPublicId: uploaded.public_id,
+            kycUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
 
       return res.json({
         ok: true,
@@ -486,6 +502,7 @@ app.post(
     }
   }
 );
+
 
 // ----------------- Start server
 const PORT = process.env.PORT || 3001;
