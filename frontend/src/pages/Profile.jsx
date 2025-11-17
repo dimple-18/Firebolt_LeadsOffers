@@ -8,6 +8,7 @@ import KycUpload from "@/components/KycUpload";
 export default function Profile() {
   const { user } = useAuth();
   const [displayName, setDisplayName] = useState("");
+  const [kycLogoUrl, setKycLogoUrl] = useState("");   // 🔥 NEW
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -22,6 +23,7 @@ export default function Profile() {
         if (snap.exists()) {
           const data = snap.data();
           setDisplayName(data.displayName || "");
+          setKycLogoUrl(data.kycLogoUrl || "");       // 🔥 NEW
         }
       } catch (err) {
         console.error("Failed to load profile:", err);
@@ -31,44 +33,24 @@ export default function Profile() {
     })();
   }, [user]);
 
-  // const handleSave = async () => {
-  //   if (!user) return;
-  //   setSaving(true);
-  //   try {
-  //     const ref = doc(db, "users", user.uid);
-  //     await updateDoc(ref, { displayName });
-
-
-  //     alert("Profile updated!");
-  //   } catch (err) {
-  //     console.error("Failed to update profile:", err);
-  //     alert("Could not update profile, please try again.");
-  //   } finally {
-  //     setSaving(false);
-  //   }
-  // };
-
   const handleSave = async () => {
-  if (!user) return;
+    if (!user) return;
 
-  setSaving(true);
-  console.log("[Profile] Saving displayName =", displayName);
+    setSaving(true);
+    console.log("[Profile] Saving displayName =", displayName);
 
-  try {
-    const ref = doc(db, "users", user.uid);
-    await updateDoc(ref, { displayName });
-    console.log("[Profile] Firestore updated OK");
-    alert("Profile updated!");
-  } catch (err) {
-    console.error("[Profile] Failed to update profile:", err);
-    // Show a readable message
-    alert(err.message || "Could not update profile, please try again.");
-  } finally {
-    // ✅ this ALWAYS runs, success or error
-    setSaving(false);
-  }
-};
-
+    try {
+      const ref = doc(db, "users", user.uid);
+      await updateDoc(ref, { displayName });
+      console.log("[Profile] Firestore updated OK");
+      alert("Profile updated!");
+    } catch (err) {
+      console.error("[Profile] Failed to update profile:", err);
+      alert(err.message || "Could not update profile, please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (!user) {
     return <div className="p-8">You must be logged in to view this page.</div>;
@@ -128,7 +110,9 @@ export default function Profile() {
             {saving ? "Saving…" : "Save changes"}
           </button>
         </div>
-         <KycUpload />
+
+        {/* 🔥 Pass initialUrl so KycUpload shows the saved logo from Firestore */}
+        <KycUpload initialUrl={kycLogoUrl} />
       </main>
     </div>
   );
