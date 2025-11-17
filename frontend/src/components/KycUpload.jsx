@@ -1,19 +1,25 @@
 // src/components/KycUpload.jsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/authedFetch";
 
-export default function KycUpload() {
+export default function KycUpload({ initialUrl = "" }) {
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [uploadedUrl, setUploadedUrl] = useState("");
+  const [uploadedUrl, setUploadedUrl] = useState(initialUrl);
+
+  // If parent passes a new initialUrl (after profile load), sync it
+  useEffect(() => {
+    if (initialUrl) {
+      setUploadedUrl(initialUrl);
+    }
+  }, [initialUrl]);
 
   function handleFileChange(e) {
     const selected = e.target.files?.[0];
 
     setMessage("");
-    setUploadedUrl("");
     setFile(selected || null);
 
     if (selected) {
@@ -35,11 +41,8 @@ export default function KycUpload() {
     try {
       setUploading(true);
       setMessage("Uploading…");
-      setUploadedUrl("");
 
-      // Build multipart/form-data
       const formData = new FormData();
-      // "file" must match backend: upload.single("file")
       formData.append("file", file);
 
       const res = await authedFetch("http://localhost:3001/upload", {
@@ -53,14 +56,12 @@ export default function KycUpload() {
         throw new Error(data.error || "Upload failed");
       }
 
-      // If Cloudinary is configured, backend returns data.cloudinary.url
       if (data.cloudinary && data.cloudinary.url) {
         setUploadedUrl(data.cloudinary.url);
-        setMessage("Upload successful! (stored on Cloudinary)");
+        setMessage("Upload successful! (stored on Cloudinary & Firestore)");
       } else {
-        setUploadedUrl("");
         setMessage(
-          "Upload handled by backend. (No Cloudinary URL returned – maybe CLOUDINARY_URL not set.)"
+          "Upload handled by backend, but no Cloudinary URL returned."
         );
       }
 
@@ -80,9 +81,21 @@ export default function KycUpload() {
       </h2>
 
       <div className="bg-white rounded-xl shadow border border-slate-200 p-6 max-w-xl">
+        {/* Show currently stored logo (from Firestore) */}
+        {uploadedUrl && (
+          <div className="mb-4">
+            <p className="text-xs text-slate-500 mb-1">Current logo:</p>
+            <img
+              src={uploadedUrl}
+              alt="Current logo"
+              className="h-20 rounded-md border border-slate-200 object-contain bg-slate-50"
+            />
+          </div>
+        )}
+
         <p className="text-sm text-slate-600 mb-4">
-          Upload a logo or KYC document image. It will be sent securely to the
-          backend and stored in Cloudinary (if configured).
+          Upload a logo or KYC document image. It will be stored via the
+          backend in Cloudinary and linked to your profile.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -105,28 +118,12 @@ export default function KycUpload() {
 
           {previewUrl && (
             <div className="mt-2">
-              <p className="text-xs text-slate-500 mb-1">Preview (local):</p>
+              <p className="text-xs text-slate-500 mb-1">New preview:</p>
               <img
                 src={previewUrl}
                 alt="Preview"
-                className="h-32 rounded-md border border-slate-200 object-contain bg-slate-50"
+                className="h-20 rounded-md border border-slate-200 object-contain bg-slate-50"
               />
-            </div>
-          )}
-
-          {uploadedUrl && (
-            <div className="mt-4">
-              <p className="text-xs text-slate-500 mb-1">
-                Uploaded URL (from backend):
-              </p>
-              <a
-                href={uploadedUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-blue-600 underline break-all"
-              >
-                {uploadedUrl}
-              </a>
             </div>
           )}
 
