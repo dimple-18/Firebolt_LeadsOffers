@@ -304,15 +304,17 @@ app.get("/profile", verifyFirebaseToken, async (req, res) => {
     const data = snap.data();
 
     return res.json({
-      ok: true,
-      profile: {
-        uid,
-        email: data.email || req.user.email || "",
-        displayName: data.displayName || req.user.name || "",
-        createdAt: data.createdAt || null,
-        updatedAt: data.updatedAt || null,
-      },
-    });
+  ok: true,
+  profile: {
+    uid,
+    email: data.email || req.user.email || "",
+    displayName: data.displayName || req.user.name || "",
+    createdAt: data.createdAt || null,
+    updatedAt: data.updatedAt || null,
+    kycLogoUrl: data.kycLogoUrl || null, // 🔥 NEW
+  },
+});
+
   } catch (err) {
     console.error("GET /profile error:", err);
     res.status(500).json({ ok: false, error: "Failed to load profile" });
