@@ -3,6 +3,7 @@ import Topbar from "@/components/Topbar";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import KycUpload from "@/components/KycUpload";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -127,6 +128,7 @@ export default function Profile() {
             {saving ? "Saving…" : "Save changes"}
           </button>
         </div>
+         <KycUpload />
       </main>
     </div>
   );
