@@ -171,6 +171,113 @@ app.get("/admin/users", verifyFirebaseToken, verifyAdmin, async (req, res) => {
     });
 
     // ===== ADMIN: UPDATE USER ROLE =====
+
+    // ===== ADMIN OFFERS & LEADS API (B15) =====
+
+// POST /admin/offers  -> create a new offer for a user
+app.post("/admin/offers", verifyFirebaseToken, verifyAdmin, async (req, res) => {
+  try {
+    const { userId, title, description, expiresAt } = req.body || {};
+
+    if (!userId || !title) {
+      return res.status(400).json({
+        ok: false,
+        error: "userId and title are required",
+      });
+    }
+
+    // Optional: check that the target user actually exists (Firebase Admin)
+    try {
+      await admin.auth().getUser(userId);
+    } catch (err) {
+      return res.status(400).json({
+        ok: false,
+        error: "Target user does not exist in Firebase Auth",
+      });
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    const docData = {
+      userId,
+      title,
+      description: description || "",
+      status: "pending",              // default when created
+      createdAt: now,
+      updatedAt: now,
+      createdBy: req.user.uid,        // which admin created it
+    };
+
+    // If an expiry date is provided, store as plain string for now
+    if (expiresAt) {
+      docData.expiresAt = expiresAt;
+    }
+
+    const ref = await db.collection("offers").add(docData);
+
+    return res.json({
+      ok: true,
+      id: ref.id,
+      offer: { id: ref.id, ...docData },
+    });
+  } catch (err) {
+    console.error("POST /admin/offers error:", err);
+    res.status(500).json({ ok: false, error: "Failed to create offer" });
+  }
+});
+
+// GET /admin/leads  -> list leads (for future lead tracking)
+app.get("/admin/leads", verifyFirebaseToken, verifyAdmin, async (req, res) => {
+  try {
+    const snap = await db
+      .collection("leads")
+      .orderBy("createdAt", "desc")
+      .limit(100)
+      .get();
+
+    const leads = snap.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    }));
+
+    res.json({ ok: true, leads });
+  } catch (err) {
+    console.error("GET /admin/leads error:", err);
+    res.status(500).json({ ok: false, error: "Failed to load leads" });
+  }
+});
+
+// POST /admin/offers/:id/accept -> admin-side acceptOffer
+app.post(
+  "/admin/offers/:id/accept",
+  verifyFirebaseToken,
+  verifyAdmin,
+  async (req, res) => {
+    try {
+      const offerId = req.params.id;
+
+      const ref = db.collection("offers").doc(offerId);
+      const snap = await ref.get();
+
+      if (!snap.exists) {
+        return res.status(404).json({ ok: false, error: "Offer not found" });
+      }
+
+      await ref.update({
+        status: "accepted",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        adminAcceptedBy: req.user.uid,
+        adminAcceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      res.json({ ok: true, id: offerId, status: "accepted" });
+    } catch (err) {
+      console.error("POST /admin/offers/:id/accept error:", err);
+      res.status(500).json({ ok: false, error: "Failed to accept offer" });
+    }
+  }
+);
+
 // POST /admin/users/:id/role  { role: "admin" | "user" }
 app.post(
   "/admin/users/:id/role",
