@@ -24,6 +24,9 @@ export default function AdminOffers() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
+  // Row-level admin action state
+  const [actionOfferId, setActionOfferId] = useState(null);
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -41,6 +44,7 @@ export default function AdminOffers() {
   function formatDate(iso) {
     if (!iso) return "-";
     const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "-";
     return d.toLocaleString();
   }
 
@@ -62,9 +66,11 @@ export default function AdminOffers() {
         const offersData = await offersRes.json();
 
         if (!cancelled) {
-          if (!offersData.ok)
+          if (!offersData.ok) {
             setOffersError(offersData.error || "Failed to load offers");
-          else setOffers(offersData.offers || []);
+          } else {
+            setOffers(offersData.offers || []);
+          }
         }
 
         // Load users for dropdown
@@ -74,14 +80,17 @@ export default function AdminOffers() {
         const usersData = await usersRes.json();
 
         if (!cancelled) {
-          if (!usersData.ok)
+          if (!usersData.ok) {
             setUsersError(usersData.error || "Failed to load users");
-          else setUsers(usersData.users || []);
+          } else {
+            setUsers(usersData.users || []);
+          }
         }
       } catch (err) {
         if (!cancelled) {
-          setOffersError(err.message || "Failed to load offers");
-          setUsersError(err.message || "Failed to load users");
+          const msg = err.message || "Failed to load data";
+          setOffersError(msg);
+          setUsersError(msg);
         }
       } finally {
         if (!cancelled) {
@@ -158,6 +167,30 @@ export default function AdminOffers() {
     }
   }
 
+  // 🔥 Admin accept endpoint hook: POST /admin/offers/:id/accept
+  async function handleAdminAccept(offerId) {
+    try {
+      setActionOfferId(offerId);
+
+      const res = await authedFetch(
+        `http://localhost:3001/admin/offers/${offerId}/accept`,
+        { method: "POST" }
+      );
+
+      const data = await res.json();
+      if (!data.ok) {
+        throw new Error(data.error || "Failed to accept offer");
+      }
+
+      // Simplest: reload list so we see updated status + timestamps
+      await reloadOffers();
+    } catch (err) {
+      alert("Could not accept offer: " + (err.message || err));
+    } finally {
+      setActionOfferId(null);
+    }
+  }
+
   return (
     <div className="flex">
       <Sidebar />
@@ -207,12 +240,15 @@ export default function AdminOffers() {
                     <th className="px-4 py-2 text-left">Status</th>
                     <th className="px-4 py-2 text-left">Created</th>
                     <th className="px-4 py-2 text-left">Updated</th>
+                    <th className="px-4 py-2 text-left">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {offers.map((o) => (
                     <tr key={o.id} className="border-t hover:bg-slate-50">
-                      <td className="px-4 py-2 text-slate-600">{o.userId}</td>
+                      <td className="px-4 py-2 text-slate-600">
+                        {o.userId}
+                      </td>
                       <td className="px-4 py-2 text-slate-900">{o.title}</td>
                       <td className="px-4 py-2">
                         <span
@@ -232,6 +268,20 @@ export default function AdminOffers() {
                       </td>
                       <td className="px-4 py-2 text-slate-500">
                         {formatDate(o.updatedAt)}
+                      </td>
+                      <td className="px-4 py-2">
+                        <button
+                          onClick={() => handleAdminAccept(o.id)}
+                          disabled={
+                            o.status === "accepted" ||
+                            actionOfferId === o.id
+                          }
+                          className="px-3 py-1 rounded-md text-xs font-medium bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
+                        >
+                          {actionOfferId === o.id
+                            ? "Accepting…"
+                            : "Mark accepted"}
+                        </button>
                       </td>
                     </tr>
                   ))}
