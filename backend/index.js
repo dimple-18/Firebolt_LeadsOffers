@@ -9,6 +9,9 @@ const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 
+// Webhook router (B16)
+const webhookRouter = require("./routes/webhook");
+
 // ----------------- Firebase Admin (server-side)
 const admin = require("firebase-admin");
 
@@ -43,6 +46,7 @@ try {
 
 // ----------------- App + middleware
 const app = express();
+
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
@@ -170,9 +174,56 @@ app.get("/admin/users", verifyFirebaseToken, verifyAdmin, async (req, res) => {
       };
     });
 
-    // ===== ADMIN: UPDATE USER ROLE =====
+    res.json({ ok: true, users });
+  } catch (err) {
+    console.error("GET /admin/users error:", err);
+    res.status(500).json({ ok: false, error: "Failed to load users" });
+  }
+});
 
-    // ===== ADMIN OFFERS & LEADS API (B15) =====
+// ===== ADMIN: UPDATE USER ROLE =====
+// POST /admin/users/:id/role  { role: "admin" | "user" }
+app.post(
+  "/admin/users/:id/role",
+  verifyFirebaseToken,
+  verifyAdmin,
+  async (req, res) => {
+    try {
+      const userId = req.params.id;
+      const { role } = req.body;
+
+      if (role !== "admin" && role !== "user") {
+        return res
+          .status(400)
+          .json({ ok: false, error: "role must be 'admin' or 'user'" });
+      }
+
+      const docRef = db.collection("users").doc(userId);
+      const snap = await docRef.get();
+
+      if (!snap.exists) {
+        return res.status(404).json({ ok: false, error: "User not found" });
+      }
+
+      await docRef.set(
+        {
+          role,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      return res.json({ ok: true, id: userId, role });
+    } catch (err) {
+      console.error("POST /admin/users/:id/role error:", err);
+      return res
+        .status(500)
+        .json({ ok: false, error: "Failed to update user role" });
+    }
+  }
+);
+
+// ===== ADMIN OFFERS & LEADS API (B15) =====
 
 // POST /admin/offers  -> create a new offer for a user
 app.post("/admin/offers", verifyFirebaseToken, verifyAdmin, async (req, res) => {
@@ -202,10 +253,10 @@ app.post("/admin/offers", verifyFirebaseToken, verifyAdmin, async (req, res) => 
       userId,
       title,
       description: description || "",
-      status: "pending",              // default when created
+      status: "pending", // default when created
       createdAt: now,
       updatedAt: now,
-      createdBy: req.user.uid,        // which admin created it
+      createdBy: req.user.uid, // which admin created it
     };
 
     // If an expiry date is provided, store as plain string for now
@@ -223,6 +274,34 @@ app.post("/admin/offers", verifyFirebaseToken, verifyAdmin, async (req, res) => 
   } catch (err) {
     console.error("POST /admin/offers error:", err);
     res.status(500).json({ ok: false, error: "Failed to create offer" });
+  }
+});
+
+// GET /admin/offers -> list ALL offers in Firestore
+app.get("/admin/offers", verifyFirebaseToken, verifyAdmin, async (req, res) => {
+  try {
+    const snap = await db
+      .collection("offers")
+      .orderBy("createdAt", "desc")
+      .get();
+
+    const offers = snap.docs.map((doc) => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        userId: d.userId || "",
+        title: d.title || "",
+        description: d.description || "",
+        status: d.status || "pending",
+        createdAt: d.createdAt ? d.createdAt.toDate().toISOString() : null,
+        updatedAt: d.updatedAt ? d.updatedAt.toDate().toISOString() : null,
+      };
+    });
+
+    res.json({ ok: true, offers });
+  } catch (err) {
+    console.error("GET /admin/offers error:", err);
+    res.status(500).json({ ok: false, error: "Failed to load offers" });
   }
 });
 
@@ -278,116 +357,6 @@ app.post(
   }
 );
 
-
-// POST /admin/users/:id/role  { role: "admin" | "user" }
-app.post(
-  "/admin/users/:id/role",
-  verifyFirebaseToken,
-  verifyAdmin,
-  async (req, res) => {
-    try {
-      const userId = req.params.id;
-      const { role } = req.body;
-
-      if (role !== "admin" && role !== "user") {
-        return res
-          .status(400)
-          .json({ ok: false, error: "role must be 'admin' or 'user'" });
-      }
-
-      const docRef = db.collection("users").doc(userId);
-      const snap = await docRef.get();
-
-      if (!snap.exists) {
-        return res.status(404).json({ ok: false, error: "User not found" });
-      }
-
-      await docRef.set(
-        {
-          role,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-
-      return res.json({ ok: true, id: userId, role });
-    } catch (err) {
-      console.error("POST /admin/users/:id/role error:", err);
-      return res
-        .status(500)
-        .json({ ok: false, error: "Failed to update user role" });
-    }
-  }
-);
-
-
-    res.json({ ok: true, users });
-  } catch (err) {
-    console.error("GET /admin/users error:", err);
-    res.status(500).json({ ok: false, error: "Failed to load users" });
-  }
-});
-
-// ===== ADMIN: GET ALL OFFERS =====
-// GET /admin/offers -> list ALL offers in Firestore
-app.get("/admin/offers", verifyFirebaseToken, verifyAdmin, async (req, res) => {
-  try {
-    const snap = await db
-      .collection("offers")
-      .orderBy("createdAt", "desc")
-      .get();
-
-    const offers = snap.docs.map((doc) => {
-      const d = doc.data();
-      return {
-        id: doc.id,
-        userId: d.userId || "",
-        title: d.title || "",
-        description: d.description || "",
-        status: d.status || "pending",
-        createdAt: d.createdAt ? d.createdAt.toDate().toISOString() : null,
-        updatedAt: d.updatedAt ? d.updatedAt.toDate().toISOString() : null,
-      };
-    });
-
-    res.json({ ok: true, offers });
-  } catch (err) {
-    console.error("GET /admin/offers error:", err);
-    res.status(500).json({ ok: false, error: "Failed to load offers" });
-  }
-});
-
-// ===== ADMIN: CREATE OFFER =====
-// POST /admin/offers -> create a new offer for a user
-app.post("/admin/offers", verifyFirebaseToken, verifyAdmin, async (req, res) => {
-  try {
-    const { userId, title, description, status } = req.body;
-
-    if (!userId || !title) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "userId and title are required" });
-    }
-
-    const now = admin.firestore.FieldValue.serverTimestamp();
-
-    const ref = await db.collection("offers").add({
-      userId,
-      title,
-      description: description || "",
-      status: status || "pending",
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    res.json({ ok: true, id: ref.id });
-  } catch (err) {
-    console.error("POST /admin/offers error:", err);
-    res.status(500).json({ ok: false, error: "Failed to create offer" });
-  }
-});
-
-
 // ===== PROFILE API =====
 
 // GET /profile  → read profile for logged-in user
@@ -412,17 +381,16 @@ app.get("/profile", verifyFirebaseToken, async (req, res) => {
     const data = snap.data();
 
     return res.json({
-  ok: true,
-  profile: {
-    uid,
-    email: data.email || req.user.email || "",
-    displayName: data.displayName || req.user.name || "",
-    createdAt: data.createdAt || null,
-    updatedAt: data.updatedAt || null,
-    kycLogoUrl: data.kycLogoUrl || null, // 🔥 NEW
-  },
-});
-
+      ok: true,
+      profile: {
+        uid,
+        email: data.email || req.user.email || "",
+        displayName: data.displayName || req.user.name || "",
+        createdAt: data.createdAt || null,
+        updatedAt: data.updatedAt || null,
+        kycLogoUrl: data.kycLogoUrl || null, // 🔥 NEW
+      },
+    });
   } catch (err) {
     console.error("GET /profile error:", err);
     res.status(500).json({ ok: false, error: "Failed to load profile" });
@@ -464,7 +432,7 @@ app.post("/profile", verifyFirebaseToken, async (req, res) => {
   }
 });
 
-// ===== OFFERS API =====
+// ===== OFFERS API (user-facing) =====
 
 // GET /offers  → list offers for logged-in user
 app.get("/offers", verifyFirebaseToken, async (req, res) => {
@@ -576,7 +544,7 @@ app.post(
       // Clean up the temp file
       fs.unlink(req.file.path, () => {});
 
-      // 🔥 NEW: save logo URL into Firestore user doc (if Cloudinary worked)
+      // save logo URL into Firestore user doc (if Cloudinary worked)
       if (uploaded) {
         const userDocRef = db.collection("users").doc(req.user.uid);
         await userDocRef.set(
@@ -613,6 +581,8 @@ app.post(
   }
 );
 
+// ===== WEBHOOK ROUTES (B16) =====
+app.use("/api/webhooks", webhookRouter);
 
 // ----------------- Start server
 const PORT = process.env.PORT || 3001;
