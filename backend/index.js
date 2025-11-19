@@ -58,6 +58,8 @@ app.get("/", (_req, res) => {
   res.json({ ok: true, message: "home page" });
 });
 
+app.use("/webhook", require("./routes/webhook"));
+
 // Silences Chrome/DevTools probe (returns 204 No Content)
 app.get("/.well-known/appspecific/com.chrome.devtools.json", (_req, res) => {
   res.status(204).end();
