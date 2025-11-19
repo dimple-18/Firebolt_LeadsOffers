@@ -614,6 +614,50 @@ app.post(
   }
 );
 
+// ======= B17: onOfferCreate (Backend Simulation of Cloud Function) =======
+const functions = require("firebase-functions");
+
+db.collection("offers").onSnapshot(async (snapshot) => {
+  snapshot.docChanges().forEach(async (change) => {
+    if (change.type === "added") {
+      const snap = change.doc;
+      const data = snap.data() || {};
+      const updates = {};
+
+      // Sanitize title
+      if (typeof data.title === "string") {
+        const cleanTitle = data.title.trim().slice(0, 120);
+        if (cleanTitle !== data.title) updates.title = cleanTitle;
+      }
+
+      // Sanitize description
+      if (typeof data.description === "string") {
+        const cleanDesc = data.description.trim().slice(0, 1000);
+        if (cleanDesc !== data.description) updates.description = cleanDesc;
+      }
+
+      // Enforce status
+      const validStatuses = ["pending", "accepted", "declined"];
+      if (!validStatuses.includes(data.status)) {
+        updates.status = "pending";
+      }
+
+      // Timestamps
+      if (!data.createdAt) {
+        updates.createdAt = admin.firestore.FieldValue.serverTimestamp();
+      }
+
+      updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+
+      // Apply updates
+      if (Object.keys(updates).length > 0) {
+        await snap.ref.set(updates, { merge: true });
+        console.log("B17 cleanup applied for offer:", snap.id);
+      }
+    }
+  });
+});
+
 
 // ----------------- Start server
 const PORT = process.env.PORT || 3001;
