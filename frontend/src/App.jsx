@@ -9,6 +9,7 @@ import ProtectedRoute from "@/routes/ProtectedRoute";
 import Admin from "@/pages/Admin";
 import AdminUsers from "@/pages/AdminUsers";
 import AdminOffers from "@/pages/AdminOffers";
+import Leads from "@/pages/Leads";   // ✅ already added
 
 export default function App() {
   return (
@@ -71,6 +72,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <AdminOffers />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ✅ NEW: Admin leads page */}
+      <Route
+        path="/admin/leads"
+        element={
+          <ProtectedRoute>
+            <Leads />
           </ProtectedRoute>
         }
       />
