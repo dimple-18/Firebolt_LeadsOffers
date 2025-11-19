@@ -7,10 +7,7 @@ const router = express.Router();
 const admin = require("firebase-admin");
 const db = admin.firestore();
 
-/**
- * Simple middleware to check a shared secret for webhooks.
- * Put the same secret in your .env as WEBHOOK_SECRET
- */
+
 function verifyWebhookSecret(req, res, next) {
   const incoming = req.header('x-webhook-secret');
   const expected = process.env.WEBHOOK_SECRET;
