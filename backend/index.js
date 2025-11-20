@@ -229,7 +229,6 @@ app.post("/admin/offers", verifyFirebaseToken, verifyAdmin, async (req, res) => 
 });
 
 // GET /admin/leads  -> list leads (for future lead tracking)
-// GET /admin/leads  -> list leads (for future lead tracking)
 app.get("/admin/leads", verifyFirebaseToken, verifyAdmin, async (req, res) => {
   try {
     const snap = await db
@@ -249,6 +248,106 @@ app.get("/admin/leads", verifyFirebaseToken, verifyAdmin, async (req, res) => {
     res.status(500).json({ ok: false, error: "Failed to load leads" });
   }
 });
+
+// ===== ADMIN: CREATE LEAD =====
+// POST /admin/leads
+app.post("/admin/leads", verifyFirebaseToken, verifyAdmin, async (req, res) => {
+  try {
+    const { name, email, source, status, notes } = req.body || {};
+
+    if (!name && !email) {
+      return res.status(400).json({
+        ok: false,
+        error: "At least name or email is required",
+      });
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    const docData = {
+      name: (name || "").trim(),
+      email: (email || "").trim(),
+      source: (source || "").trim(), // e.g. "website", "manual", "referral"
+      status: (status || "new").trim(), // e.g. "new", "contacted", "qualified", "lost"
+      notes: (notes || "").trim(),
+      createdAt: now,
+      updatedAt: now,
+      createdBy: req.user.uid,
+    };
+
+    const ref = await db.collection("leads").add(docData);
+
+    return res.json({ ok: true, id: ref.id });
+  } catch (err) {
+    console.error("POST /admin/leads error:", err);
+    return res.status(500).json({ ok: false, error: "Failed to create lead" });
+  }
+});
+
+// ===== ADMIN: UPDATE LEAD =====
+// PUT /admin/leads/:id
+app.put(
+  "/admin/leads/:id",
+  verifyFirebaseToken,
+  verifyAdmin,
+  async (req, res) => {
+    try {
+      const id = req.params.id;
+      const { name, email, source, status, notes } = req.body || {};
+
+      const ref = db.collection("leads").doc(id);
+      const snap = await ref.get();
+
+      if (!snap.exists) {
+        return res.status(404).json({ ok: false, error: "Lead not found" });
+      }
+
+      const updates = {
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      if (name !== undefined) updates.name = (name || "").trim();
+      if (email !== undefined) updates.email = (email || "").trim();
+      if (source !== undefined) updates.source = (source || "").trim();
+      if (status !== undefined) updates.status = (status || "").trim();
+      if (notes !== undefined) updates.notes = (notes || "").trim();
+
+      await ref.set(updates, { merge: true });
+
+      return res.json({ ok: true, id });
+    } catch (err) {
+      console.error("PUT /admin/leads/:id error:", err);
+      return res.status(500).json({ ok: false, error: "Failed to update lead" });
+    }
+  }
+);
+
+// ===== ADMIN: DELETE LEAD =====
+// DELETE /admin/leads/:id
+app.delete(
+  "/admin/leads/:id",
+  verifyFirebaseToken,
+  verifyAdmin,
+  async (req, res) => {
+    try {
+      const id = req.params.id;
+
+      const ref = db.collection("leads").doc(id);
+      const snap = await ref.get();
+
+      if (!snap.exists) {
+        return res.status(404).json({ ok: false, error: "Lead not found" });
+      }
+
+      await ref.delete();
+
+      return res.json({ ok: true, id });
+    } catch (err) {
+      console.error("DELETE /admin/leads/:id error:", err);
+      return res.status(500).json({ ok: false, error: "Failed to delete lead" });
+    }
+  }
+);
 
 
 // POST /admin/offers/:id/accept -> admin-side acceptOffer
