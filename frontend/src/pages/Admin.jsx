@@ -13,6 +13,8 @@ function StatCard({ label, value, accent = "default" }) {
       ? "bg-red-50 text-red-800 border-red-100"
       : accent === "orange"
       ? "bg-orange-50 text-orange-800 border-orange-100"
+      : accent === "blue"
+      ? "bg-blue-50 text-blue-800 border-blue-100"
       : "bg-slate-50 text-slate-800 border-slate-100";
 
   return (
@@ -76,15 +78,17 @@ function AdminSummary() {
   const {
     usersCount,
     offersCount,
+    leadsCount,
     acceptedCount,
     declinedCount,
     pendingCount,
   } = stats;
 
   return (
-    <div className="mt-6 grid gap-4 md:grid-cols-5">
+    <div className="mt-6 grid gap-4 md:grid-cols-6">
       <StatCard label="Total users" value={usersCount} />
       <StatCard label="Total offers" value={offersCount} />
+      <StatCard label="Total leads" value={leadsCount} accent="blue" />
       <StatCard label="Accepted" value={acceptedCount} accent="green" />
       <StatCard label="Declined" value={declinedCount} accent="red" />
       <StatCard label="Pending" value={pendingCount} accent="orange" />
@@ -129,7 +133,7 @@ export default function Admin() {
                 Admin Dashboard
               </h1>
               <p className="text-slate-600 mt-2">
-                High-level overview of users and offers across Firebolt.
+                High-level overview of users, leads and offers across Firebolt.
               </p>
             </div>
           </header>
@@ -138,7 +142,7 @@ export default function Admin() {
           <AdminSummary />
 
           {/* Quick admin actions */}
-          <section className="mt-10 grid gap-4 md:grid-cols-2">
+          <section className="mt-10 grid gap-4 md:grid-cols-3">
             <div className="bg-white rounded-2xl shadow border border-slate-200 p-6">
               <h2 className="text-lg font-semibold text-slate-900">
                 Manage users
@@ -168,6 +172,22 @@ export default function Admin() {
                 className="inline-flex items-center mt-4 text-sm font-medium text-slate-900 hover:underline"
               >
                 Go to Offers &rarr;
+              </a>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow border border-slate-200 p-6">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Manage leads
+              </h2>
+              <p className="text-sm text-slate-600 mt-2">
+                Create, edit, and track leads in one place for your sales
+                pipeline.
+              </p>
+              <a
+                href="/admin/leads"
+                className="inline-flex items-center mt-4 text-sm font-medium text-slate-900 hover:underline"
+              >
+                Go to Leads &rarr;
               </a>
             </div>
           </section>
