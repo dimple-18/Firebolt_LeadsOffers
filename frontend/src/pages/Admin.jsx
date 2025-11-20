@@ -16,6 +16,7 @@ function StatCard({ label, value, accent = "default" }) {
       : accent === "blue"
       ? "bg-blue-50 text-blue-800 border-blue-100"
       : "bg-slate-50 text-slate-800 border-slate-100";
+      
 
   return (
     <div className={`rounded-xl border ${accentClasses} p-4`}>
@@ -84,6 +85,9 @@ function AdminSummary() {
     pendingCount,
   } = stats;
 
+    const acceptanceRate =
+    offersCount > 0 ? ((acceptedCount / offersCount) * 100).toFixed(1) : 0;
+
   return (
     <div className="mt-6 grid gap-4 md:grid-cols-6">
       <StatCard label="Total users" value={usersCount} />
@@ -92,6 +96,13 @@ function AdminSummary() {
       <StatCard label="Accepted" value={acceptedCount} accent="green" />
       <StatCard label="Declined" value={declinedCount} accent="red" />
       <StatCard label="Pending" value={pendingCount} accent="orange" />
+
+      {/* NEW: Acceptance Rate */}
+      <StatCard
+        label="Acceptance Rate"
+        value={`${acceptanceRate}%`}
+        accent="purple"
+      />
     </div>
   );
 }
