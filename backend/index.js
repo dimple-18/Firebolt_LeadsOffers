@@ -229,6 +229,7 @@ app.post("/admin/offers", verifyFirebaseToken, verifyAdmin, async (req, res) => 
 });
 
 // GET /admin/leads  -> list leads (for future lead tracking)
+// GET /admin/leads  -> list leads (for future lead tracking)
 app.get("/admin/leads", verifyFirebaseToken, verifyAdmin, async (req, res) => {
   try {
     const snap = await db
@@ -248,6 +249,7 @@ app.get("/admin/leads", verifyFirebaseToken, verifyAdmin, async (req, res) => {
     res.status(500).json({ ok: false, error: "Failed to load leads" });
   }
 });
+
 
 // POST /admin/offers/:id/accept -> admin-side acceptOffer
 app.post(

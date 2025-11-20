@@ -17,6 +17,7 @@ export default function Sidebar() {
     { name: "Admin Home", path: "/admin" },
     { name: "Admin Users", path: "/admin/users" },
     { name: "Admin Offers", path: "/admin/offers" },
+    { name: "Admin Leads", path: "/admin/leads" }
   ];
 
   return (

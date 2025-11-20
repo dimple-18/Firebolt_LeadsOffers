@@ -1,6 +1,6 @@
-// admin-tool/src/pages/Leads.jsx
+// frontend/src/pages/Leads.jsx
 import { useEffect, useState } from "react";
-import { authedFetch } from "@/lib/authedFetch"; // same helper you use elsewhere
+import { authedFetch } from "@/lib/authedFetch";
 
 export default function Leads() {
   const [leads, setLeads] = useState([]);
@@ -8,36 +8,45 @@ export default function Leads() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    let isMounted = true;
+    let active = true;
 
-    async function loadLeads() {
+    async function fetchLeads() {
       setLoading(true);
       setError("");
 
       try {
-        const res = await authedFetch("/admin/leads"); // calls backend
+        const res = await authedFetch("/admin/leads");
+        const body = await res.json();
+
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
           throw new Error(body.error || `Request failed (${res.status})`);
         }
 
-        const body = await res.json();
-        if (!isMounted) return;
-
+        if (!active) return;
         setLeads(body.leads || []);
       } catch (err) {
         console.error("Failed to load leads:", err);
-        if (isMounted) setError(err.message || "Failed to load leads");
+        if (active) setError(err.message || "Failed to load leads");
       } finally {
-        if (isMounted) setLoading(false);
+        if (active) setLoading(false);
       }
     }
 
-    loadLeads();
+    fetchLeads();
     return () => {
-      isMounted = false;
+      active = false;
     };
   }, []);
+
+  const formatDate = (value) => {
+    if (!value) return "—";
+
+    if (value._seconds) {
+      return new Date(value._seconds * 1000).toLocaleString();
+    }
+
+    return new Date(value).toLocaleString();
+  };
 
   return (
     <div className="p-6">
@@ -51,7 +60,7 @@ export default function Leads() {
       )}
 
       {!loading && !error && leads.length === 0 && (
-        <p className="text-gray-500">No leads found yet.</p>
+        <p className="text-gray-500">No leads found.</p>
       )}
 
       {!loading && !error && leads.length > 0 && (
@@ -78,12 +87,7 @@ export default function Leads() {
                     {(lead.status || "new").toString()}
                   </td>
                   <td className="px-4 py-2">
-                    {lead.createdAt
-                      ? new Date(lead.createdAt._seconds
-                          ? lead.createdAt._seconds * 1000
-                          : lead.createdAt
-                        ).toLocaleString()
-                      : "—"}
+                    {formatDate(lead.createdAt)}
                   </td>
                 </tr>
               ))}
