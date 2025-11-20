@@ -382,6 +382,40 @@ app.post(
   }
 );
 
+// POST /admin/offers/:id/decline -> admin-side declineOffer
+app.post(
+  "/admin/offers/:id/decline",
+  verifyFirebaseToken,
+  verifyAdmin,
+  async (req, res) => {
+    try {
+      const offerId = req.params.id;
+
+      const ref = db.collection("offers").doc(offerId);
+      const snap = await ref.get();
+
+      if (!snap.exists) {
+        return res.status(404).json({ ok: false, error: "Offer not found" });
+      }
+
+      await ref.update({
+        status: "declined",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        adminDeclinedBy: req.user.uid,
+        adminDeclinedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return res.json({ ok: true, id: offerId, status: "declined" });
+    } catch (err) {
+      console.error("POST /admin/offers/:id/decline error:", err);
+      return res
+        .status(500)
+        .json({ ok: false, error: "Failed to decline offer" });
+    }
+  }
+);
+
+
 // POST /admin/users/:id/role  { role: "admin" | "user" }
 app.post(
   "/admin/users/:id/role",

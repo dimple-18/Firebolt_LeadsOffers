@@ -26,6 +26,7 @@ export default function AdminOffers() {
 
   // Row-level admin action state
   const [actionOfferId, setActionOfferId] = useState(null);
+  const [actionType, setActionType] = useState(null); // "accept" | "decline" | null
 
   if (!isAdmin) {
     return (
@@ -60,9 +61,7 @@ export default function AdminOffers() {
         setUsersError("");
 
         // Load offers
-        const offersRes = await authedFetch(
-          "/admin/offers"
-        );
+        const offersRes = await authedFetch("/admin/offers");
         const offersData = await offersRes.json();
 
         if (!cancelled) {
@@ -74,9 +73,7 @@ export default function AdminOffers() {
         }
 
         // Load users for dropdown
-        const usersRes = await authedFetch(
-          "/admin/users"
-        );
+        const usersRes = await authedFetch("/admin/users");
         const usersData = await usersRes.json();
 
         if (!cancelled) {
@@ -171,23 +168,47 @@ export default function AdminOffers() {
   async function handleAdminAccept(offerId) {
     try {
       setActionOfferId(offerId);
+      setActionType("accept");
 
-      const res = await authedFetch(
-        `/admin/offers/${offerId}/accept`,
-        { method: "POST" }
-      );
+      const res = await authedFetch(`/admin/offers/${offerId}/accept`, {
+        method: "POST",
+      });
 
       const data = await res.json();
       if (!data.ok) {
         throw new Error(data.error || "Failed to accept offer");
       }
 
-      // Simplest: reload list so we see updated status + timestamps
       await reloadOffers();
     } catch (err) {
       alert("Could not accept offer: " + (err.message || err));
     } finally {
       setActionOfferId(null);
+      setActionType(null);
+    }
+  }
+
+  // 🔥 Admin decline endpoint hook: POST /admin/offers/:id/decline
+  async function handleAdminDecline(offerId) {
+    try {
+      setActionOfferId(offerId);
+      setActionType("decline");
+
+      const res = await authedFetch(`/admin/offers/${offerId}/decline`, {
+        method: "POST",
+      });
+
+      const data = await res.json();
+      if (!data.ok) {
+        throw new Error(data.error || "Failed to decline offer");
+      }
+
+      await reloadOffers();
+    } catch (err) {
+      alert("Could not decline offer: " + (err.message || err));
+    } finally {
+      setActionOfferId(null);
+      setActionType(null);
     }
   }
 
@@ -246,9 +267,7 @@ export default function AdminOffers() {
                 <tbody>
                   {offers.map((o) => (
                     <tr key={o.id} className="border-t hover:bg-slate-50">
-                      <td className="px-4 py-2 text-slate-600">
-                        {o.userId}
-                      </td>
+                      <td className="px-4 py-2 text-slate-600">{o.userId}</td>
                       <td className="px-4 py-2 text-slate-900">{o.title}</td>
                       <td className="px-4 py-2">
                         <span
@@ -269,18 +288,33 @@ export default function AdminOffers() {
                       <td className="px-4 py-2 text-slate-500">
                         {formatDate(o.updatedAt)}
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-2 space-x-2">
+                        {/* Accept button */}
                         <button
                           onClick={() => handleAdminAccept(o.id)}
                           disabled={
                             o.status === "accepted" ||
                             actionOfferId === o.id
                           }
-                          className="px-3 py-1 rounded-md text-xs font-medium bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
+                          className="px-3 py-1 rounded-md text-xs font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                         >
-                          {actionOfferId === o.id
+                          {actionOfferId === o.id && actionType === "accept"
                             ? "Accepting…"
                             : "Mark accepted"}
+                        </button>
+
+                        {/* Decline button */}
+                        <button
+                          onClick={() => handleAdminDecline(o.id)}
+                          disabled={
+                            o.status === "declined" ||
+                            actionOfferId === o.id
+                          }
+                          className="px-3 py-1 rounded-md text-xs font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {actionOfferId === o.id && actionType === "decline"
+                            ? "Declining…"
+                            : "Mark declined"}
                         </button>
                       </td>
                     </tr>
