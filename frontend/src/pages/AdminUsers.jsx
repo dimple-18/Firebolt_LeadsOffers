@@ -17,7 +17,7 @@ export default function AdminUsers() {
 
     try {
       const res = await authedFetch(
-        `http://localhost:3001/admin/users/${userId}/role`,
+        `/admin/users/${userId}/role`,
         {
           method: "POST",
           body: JSON.stringify({ role: nextRole }),
@@ -67,7 +67,7 @@ export default function AdminUsers() {
         setLoading(true);
         setError("");
 
-        const res = await authedFetch("http://localhost:3001/admin/users");
+        const res = await authedFetch("/admin/users");
         const data = await res.json();
 
         if (cancelled) return;

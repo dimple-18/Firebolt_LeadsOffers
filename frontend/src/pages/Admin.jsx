@@ -39,7 +39,7 @@ function AdminSummary() {
         setLoading(true);
         setError("");
 
-        const res = await authedFetch("http://localhost:3001/admin/summary");
+        const res = await authedFetch("/admin/summary");
         const data = await res.json();
 
         if (cancelled) return;

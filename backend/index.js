@@ -253,6 +253,7 @@ app.get("/admin/leads", verifyFirebaseToken, verifyAdmin, async (req, res) => {
 // POST /admin/leads
 app.post("/admin/leads", verifyFirebaseToken, verifyAdmin, async (req, res) => {
   try {
+    console.log("▶︎ POST /admin/leads hit with body:", req.body);
     const { name, email, source, status, notes } = req.body || {};
 
     if (!name && !email) {
@@ -276,7 +277,7 @@ app.post("/admin/leads", verifyFirebaseToken, verifyAdmin, async (req, res) => {
     };
 
     const ref = await db.collection("leads").add(docData);
-
+    console.log("New lead created with ID:", ref.id);
     return res.json({ ok: true, id: ref.id });
   } catch (err) {
     console.error("POST /admin/leads error:", err);
@@ -761,7 +762,7 @@ db.collection("offers").onSnapshot(async (snapshot) => {
 
 
 // ----------------- Start server
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () =>
   console.log(`✅ Backend running on http://localhost:${PORT}`)

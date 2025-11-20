@@ -2,7 +2,7 @@
 import { auth } from "@/lib/firebase";
 
 const API_BASE =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 
 export async function authedFetch(url, options = {}) {
   let idToken = null;
@@ -12,7 +12,7 @@ export async function authedFetch(url, options = {}) {
     idToken = await auth.currentUser?.getIdToken();
   } catch (err) {
     console.error("getIdToken error:", err);
-    // we will still call backend, just without token
+
   }
 
   const headersFromOptions = options.headers || {};
@@ -28,7 +28,7 @@ export async function authedFetch(url, options = {}) {
     ...(isFormData ? {} : { "Content-Type": "application/json" }),
   };
 
-  // 👇 IMPORTANT: route relative URLs to backend (3001)
+  // 👇 route relative URLs to backend (5001)
   const finalUrl = url.startsWith("http")
     ? url
     : `${API_BASE}${url}`;

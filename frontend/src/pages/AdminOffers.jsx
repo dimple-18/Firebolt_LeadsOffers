@@ -61,7 +61,7 @@ export default function AdminOffers() {
 
         // Load offers
         const offersRes = await authedFetch(
-          "http://localhost:3001/admin/offers"
+          "/admin/offers"
         );
         const offersData = await offersRes.json();
 
@@ -75,7 +75,7 @@ export default function AdminOffers() {
 
         // Load users for dropdown
         const usersRes = await authedFetch(
-          "http://localhost:3001/admin/users"
+          "/admin/users"
         );
         const usersData = await usersRes.json();
 
@@ -111,7 +111,7 @@ export default function AdminOffers() {
       setOffersLoading(true);
       setOffersError("");
 
-      const res = await authedFetch("http://localhost:3001/admin/offers");
+      const res = await authedFetch("/admin/offers");
       const data = await res.json();
 
       if (!data.ok) {
@@ -138,7 +138,7 @@ export default function AdminOffers() {
     try {
       setCreating(true);
 
-      const res = await authedFetch("http://localhost:3001/admin/offers", {
+      const res = await authedFetch("/admin/offers", {
         method: "POST",
         body: JSON.stringify({
           userId: selectedUserId,
@@ -173,7 +173,7 @@ export default function AdminOffers() {
       setActionOfferId(offerId);
 
       const res = await authedFetch(
-        `http://localhost:3001/admin/offers/${offerId}/accept`,
+        `/admin/offers/${offerId}/accept`,
         { method: "POST" }
       );
 
