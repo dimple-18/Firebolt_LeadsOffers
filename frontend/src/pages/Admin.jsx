@@ -8,15 +8,16 @@ import { useAuth } from "@/contexts/AuthContext";
 function StatCard({ label, value, accent = "default" }) {
   const accentClasses =
     accent === "green"
-      ? "bg-green-50 text-green-800 border-green-100"
+      ? "bg-green-80 text-green-800 border-green-100"
       : accent === "red"
       ? "bg-red-50 text-red-800 border-red-100"
       : accent === "orange"
       ? "bg-orange-50 text-orange-800 border-orange-100"
       : accent === "blue"
       ? "bg-blue-50 text-blue-800 border-blue-100"
+      : accent === "purple"
+      ? "bg-purple-50 text-purple-800 border-purple-100"
       : "bg-slate-50 text-slate-800 border-slate-100";
-      
 
   return (
     <div className={`rounded-xl border ${accentClasses} p-4`}>
@@ -27,6 +28,7 @@ function StatCard({ label, value, accent = "default" }) {
     </div>
   );
 }
+
 
 // Admin-only summary area
 function AdminSummary() {
