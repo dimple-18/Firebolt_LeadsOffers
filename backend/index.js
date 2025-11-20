@@ -113,15 +113,18 @@ app.get("/admin/test", verifyFirebaseToken, verifyAdmin, (req, res) => {
   res.json({ ok: true, message: "Admin access granted!" });
 });
 
-// ===== ADMIN SUMMARY ROUTE =====
 // GET /admin/summary -> counts for dashboard cards
 app.get("/admin/summary", verifyFirebaseToken, verifyAdmin, async (req, res) => {
   try {
-    const usersSnap = await db.collection("users").get();
-    const offersSnap = await db.collection("offers").get();
+    const [usersSnap, offersSnap, leadsSnap] = await Promise.all([
+      db.collection("users").get(),
+      db.collection("offers").get(),
+      db.collection("leads").get(),
+    ]);
 
     const usersCount = usersSnap.size;
     const offersCount = offersSnap.size;
+    const leadsCount = leadsSnap.size;
 
     let acceptedCount = 0;
     let declinedCount = 0;
@@ -139,6 +142,7 @@ app.get("/admin/summary", verifyFirebaseToken, verifyAdmin, async (req, res) => 
       stats: {
         usersCount,
         offersCount,
+        leadsCount,
         acceptedCount,
         declinedCount,
         pendingCount,
@@ -146,7 +150,9 @@ app.get("/admin/summary", verifyFirebaseToken, verifyAdmin, async (req, res) => 
     });
   } catch (err) {
     console.error("GET /admin/summary error:", err);
-    res.status(500).json({ ok: false, error: "Failed to load admin summary" });
+    res
+      .status(500)
+      .json({ ok: false, error: "Failed to load admin summary" });
   }
 });
 
