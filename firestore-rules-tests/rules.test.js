@@ -130,4 +130,23 @@ describe("Firestore security rules for Firebolt", () => {
 
     await assertFails(getDoc(doc(aliceDb, "leads/lead1")));
   });
+
+  it("blocks client from reading audit logs", async () => {
+    const aliceCtx = testEnv.authenticatedContext("alice");
+    const aliceDb = aliceCtx.firestore();
+
+    await assertFails(getDoc(doc(aliceDb, "auditLogs/someLogId")));
+  });
+
+  it("blocks client from writing audit logs", async () => {
+    const aliceCtx = testEnv.authenticatedContext("alice");
+    const aliceDb = aliceCtx.firestore();
+
+    await assertFails(
+      setDoc(doc(aliceDb, "auditLogs/anotherLog"), {
+        event: "something",
+        createdAt: Date.now(),
+      })
+    );
+  });
 });
