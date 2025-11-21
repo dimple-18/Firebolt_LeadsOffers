@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ===== USERS COLLECTION =====
+    // users/{uid} – each user can only see/update their own profile
+    match /users/{userId} {
+
+      // Read your own user doc
+      allow get, list: if isOwner(userId);
+
+      // Create: allowed only for yourself (uid must match)
+      allow create: if isSignedIn()
+                    && request.resource.id == request.auth.uid;
+
+      // Update: allowed only on your own doc
+      allow update: if isOwner(userId);
+
+      // Delete: never allowed from client
+      allow delete: if false;
+    }
+
+    // ===== OFFERS COLLECTION =====
+    // offers/{offerId} – user can ONLY read offers where userId == their uid
+    match /offers/{offerId} {
+
+      // Read offers where userId matches current user
+      allow get, list: if isSignedIn()
+                       && resource.data.userId == request.auth.uid;
+
+      // No client-side writes; all creates/updates go via backend Admin SDK
+      allow create, update, delete: if false;
+    }
+
+    // ===== LEADS COLLECTION =====
+    // Admin-only; all access via backend Admin SDK -> deny client
+    match /leads/{leadId} {
+      allow read, write: if false;
+    }
+
+    // ===== AUDIT LOGS COLLECTION =====
+    // Written by backend webhook -> deny from client
+    match /auditLogs/{logId} {
+      allow read, write: if false;
+    }
+
+    // ===== FALLBACK – BLOCK EVERYTHING ELSE =====
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
