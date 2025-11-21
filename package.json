@@ -1,4 +1,11 @@
 {
+  "name": "firebolt-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "E2E tests for Firebolt using Playwright",
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
   "devDependencies": {
     "@playwright/test": "^1.56.1"
   }
