@@ -150,4 +150,18 @@ runs at:
 runs at:
 👉 http://localhost:5001
 
+🛡 Firestore Security Rules
+    Rules live in:
+    ✔ firestore.rules
+
+🧪 Unit Tests for Firestore Rules
+        Tests folder: firestore-rules-tests
+
+Test runs using emulator:
+    firebase emulators:exec --only firestore "cd firestore-rules-tests && npm test"
+
+🧪 Playwright E2E Tests
+        Tests folder: /tests
+        runs at: npm run test:e2e
+        (Requires frontend + backend running locally)
 
