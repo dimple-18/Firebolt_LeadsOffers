@@ -33,6 +33,69 @@ Includes an Admin Panel, secure APIs, Firestore rules, and E2E tests.
     Admin-only access for sensitive paths
     Token-based backend verification
     Fully tested using the Firestore emulator
+
+🧱 Project Structure
+    Firebolt_LeadsOffers/
+│
+├── backend/
+│   ├── index.js                # Express backend + admin APIs
+│   ├── routes/
+│   │   ├── webhook.js          # Webhook + API routes
+│   │   └── ...other routes
+│   └── config/
+│       ├── serviceAccountKey.json
+│       └── ...other config
+│
+├── frontend/
+│   ├── index.html
+│   ├── vite.config.js
+│   └── src/
+│       ├── App.jsx
+│       ├── main.jsx
+│       ├── components/
+│       │   ├── Sidebar.jsx
+│       │   ├── Topbar.jsx
+│       │   ├── AuthStatus.jsx
+│       │   ├── KyCUpload.jsx
+│       │   └── ...other components
+│       ├── contexts/
+│       │   └── AuthContext.jsx
+│       ├── lib/
+│       │   ├── authedFetch.js
+│       │   └── firebase.js
+│       └── pages/
+│           ├── Login.jsx
+│           ├── Register.jsx
+│           ├── Reset.jsx
+│           ├── Dashboard.jsx
+│           ├── Profile.jsx
+│           ├── Offers.jsx
+│           ├── Admin.jsx
+│           ├── AdminUsers.jsx
+│           ├── AdminOffers.jsx
+│           └── AdminLeads.jsx
+│
+├── firestore.rules             # Firestore security rules
+├── firebase.json               # Firebase config & emulators
+│
+├── firestore-rules-tests/
+│   ├── package.json
+│   ├── rules.test.js           # Firestore rules unit tests
+│   └── ...node_modules
+│
+├── tests/
+│   ├── e2e-happy-path.spec.js  # Playwright E2E tests
+│   └── ...test config
+│
+├── test-results/               # Playwright output snapshots
+│
+├── .firebaserc
+├── .gitignore
+├── .gitmodules
+├── .firebase.json
+├── firestore-debug.log
+├── firestore.rules
+├── playwright.config.js
+└── README.md
+
         
-    
-    
