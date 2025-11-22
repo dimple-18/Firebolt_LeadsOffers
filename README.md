@@ -99,60 +99,55 @@ Includes an Admin Panel, secure APIs, Firestore rules, and E2E tests.
 └── README.md
 
 🛠 Tech Stack
-Frontend
+    Frontend
+        → React + Vite
+        → Tailwind CSS
+        → React Router
+        → Firebase Auth (client SDK)
 
-React + Vite
-
-Tailwind CSS
-
-React Router
-
-Firebase Auth (client SDK)
 
 Backend
-
-Node.js + Express
-
-Firebase Admin SDK
-
-Cloudinary (optional)
-
-Multer file handling
+    → Node.js + Express
+    → Firebase Admin SDK
+    → Cloudinary (optional)
+    → Multer file handling
 
 Database
-
-Firestore
-
-Firestore Security Rules
+    → Firestore
+    → Firestore Security Rules
 
 Testing
-
-Firestore Emulator
-
-Playwright E2E
-
-Jest (rules testing)
+    → Firestore Emulator
+    → Playwright E2E
+    → Jest (rules testing)
 
 🔐 Environment Variables
-frontend/.env
-VITE_FIREBASE_API_KEY=
-VITE_FIREBASE_AUTH_DOMAIN=
-VITE_FIREBASE_PROJECT_ID=
-VITE_FIREBASE_STORAGE_BUCKET=
-VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=
+    frontend/.env
+        VITE_FIREBASE_API_KEY=
+        VITE_FIREBASE_AUTH_DOMAIN=
+        VITE_FIREBASE_PROJECT_ID=
+        VITE_FIREBASE_STORAGE_BUCKET=
+        VITE_FIREBASE_MESSAGING_SENDER_ID=
+        VITE_FIREBASE_APP_ID=
 
 # Backend URL
 VITE_BACKEND_URL=http://localhost:5001
 
-
-backend/.env
-PORT=5001
-
-# If using Cloudinary:
-CLOUDINARY_URL=
-
-# Firebase Admin key
-GOOGLE_APPLICATION_CREDENTIALS="./config/serviceAccountKey.json"
-
 🧑‍💻 Local Development Setup
+    1️⃣ Install Frontend
+        cd frontend
+        npm install
+        npm run dev
+runs at:
+👉 http://localhost:5173
+
+
+2️⃣ Install Backend
+    cd backend
+    npm install
+    node index.js
+
+runs at:
+👉 http://localhost:5001
+
+
