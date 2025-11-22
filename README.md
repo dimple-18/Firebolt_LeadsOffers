@@ -98,4 +98,13 @@ Includes an Admin Panel, secure APIs, Firestore rules, and E2E tests.
 ├── playwright.config.js
 └── README.md
 
-        
+🛠 Tech Stack
+Frontend
+
+React + Vite
+
+Tailwind CSS
+
+React Router
+
+Firebase Auth (client SDK)
