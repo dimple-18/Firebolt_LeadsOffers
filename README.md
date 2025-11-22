@@ -165,3 +165,48 @@ Test runs using emulator:
         runs at: npm run test:e2e
         (Requires frontend + backend running locally)
 
+📊 Features
+✔ User Features
+    Register
+    Login
+    View dashboard
+    View/accept/decline offers
+    Update profile
+
+✔ Admin Features
+    View dashboard KPIs
+    Manage users (promote/demote admin)
+    Manage offers (create/accept)
+    Manage leads (create/edit/delete)
+    Impersonate mode (read-only)
+
+🚀 Deployment Guide
+    Frontend (Vercel or Netlify)
+        Set environment vars
+        Build: npm run build
+        Upload dist/
+    Backend (VPS + PM2 + Nginx)
+        Install Node
+        Upload backend folder
+        Run using PM2
+        Configure reverse proxy
+        Enable HTTPS
+
+📦 Admin Portal Links
+    Once deployed:
+        Admin Home: /admin
+        Users: /admin/users
+        Offers: /admin/offers
+        Leads: /admin/leads
+(Role-based access enforced both client-side + Firestore rules + backend middleware)
+
+🧹 Bug Fixes & Polish (Buffer)
+        Minor UI fixes
+        Loader states + error handling
+        UX improvements (save notifications, toasts, form resets)
+
+❤️ Author
+    Dimple Kumari
+    Full-Stack Developer
+    Owner of Firebolt Project
+
