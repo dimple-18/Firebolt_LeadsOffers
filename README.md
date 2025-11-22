@@ -144,3 +144,13 @@ VITE_FIREBASE_APP_ID=
 
 # Backend URL
 VITE_BACKEND_URL=http://localhost:5001
+
+
+backend/.env
+PORT=5001
+
+# If using Cloudinary:
+CLOUDINARY_URL=
+
+# Firebase Admin key
+GOOGLE_APPLICATION_CREDENTIALS="./config/serviceAccountKey.json"
